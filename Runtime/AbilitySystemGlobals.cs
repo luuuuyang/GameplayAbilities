@@ -1,0 +1,46 @@
+using UnityEngine;
+using System.Collections.Generic;
+
+namespace GameplayAbilities
+{
+	public class AbilitySystemGlobals : Singleton<AbilitySystemGlobals>
+	{
+		public bool IgnoreAbilitySystemCooldowns;
+		public bool IgnoreAbilitySystemCosts;
+
+		//# Whether the game should allow the usage of gameplay mod evaluation channels or not
+		public bool AllowGameplayModEvaluationChannels;
+
+		public List<GameplayModEvaluationChannel> GameplayModEvaluationChannelAliases;
+
+		public static AbilitySystemComponent GetAbilitySystemComponentFromActor(GameObject actor, bool lookForComponent = true)
+		{
+			if (actor == null)
+			{
+				return null;
+			}
+
+			if (lookForComponent)
+			{
+				return actor.GetComponent<AbilitySystemComponent>();
+			}
+
+			return null;
+		}
+
+		public bool IsGameplayModEvaluationChannelValid(GameplayModEvaluationChannel channel)
+		{
+			return AllowGameplayModEvaluationChannels ? GameplayModEvaluationChannelAliases.Contains(channel) : channel == GameplayModEvaluationChannel.Channel0;
+		}
+
+		public virtual void GlobalPreGameplayEffectSpecApply(GameplayEffectSpec spec, AbilitySystemComponent abilitySystemComponent)
+		{
+
+		}
+
+		public virtual void SetCurrentAppliedGE(in GameplayEffectSpec spec)
+		{
+			
+		}
+	}
+}

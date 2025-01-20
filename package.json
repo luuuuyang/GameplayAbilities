@@ -1,0 +1,26 @@
+{
+  "name": "com.luuuuyang.gameplayabilities",
+  "version": "1.0.0-exp",
+  "displayName": "Gameplay Abilities",
+  "description": "Adds GameplayEffect and GameplayAbility classes to handle complicated gameplay interactions.",
+  "unity": "2021.2",
+  "documentationUrl": "",
+  "changelogUrl": "",
+  "licensesUrl": "",
+  "dependencies": {
+    "com.unity.test-framework": "1.4.5",
+    "com.unity.test-framework.performance": "3.0.3",
+    "com.luuuuyang.gameplaytags": "1.0.0-exp"
+  },
+  "keywords": [
+    "gameplay",
+    "effect",
+    "ability",
+    "status"
+  ],
+  "author": {
+    "name": "luuuuyang",
+    "email": "luuuuyang@163.com",
+    "url": "https://github.com/luuuuyang"
+  }
+}
