@@ -30,10 +30,10 @@ namespace GameplayAbilities.Tests
                 GameplayTagContainer allGameplayTags = new();
                 GameplayTagsManager.Instance.RequestAllGameplayTags(allGameplayTags, true);
 
-                Assert.That(allGameplayTags.Num >= NumDebugTags,
-                    $"There are only {allGameplayTags.Num} defined tags in the Project. We need at least {NumDebugTags} to run this test.");
+                Assert.That(allGameplayTags.Count >= NumDebugTags,
+                    $"There are only {allGameplayTags.Count} defined tags in the Project. We need at least {NumDebugTags} to run this test.");
 
-                int step = allGameplayTags.Num / NumDebugTags;
+                int step = allGameplayTags.Count / NumDebugTags;
                 for (int index = 0; index < NumDebugTags; index++)
                 {
                     GameplayTag randomGameplayTag = allGameplayTags.GetByIndex(index * step);

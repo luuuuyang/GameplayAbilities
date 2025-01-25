@@ -12,21 +12,21 @@ using Sirenix.OdinInspector;
 
 namespace GameplayAbilities
 {
-	public enum GameplayEffectMagnitudeCalculation { ScalableFloat, AttributeBased, CustomCalculationClass, SetByCaller }
+	public enum GameplayEffectMagnitudeCalculation
+	{
+		ScalableFloat,
+		AttributeBased,
+		CustomCalculationClass,
+		SetByCaller
+	}
 
-	public enum AttributeBasedFloatCalculationType { AttributeMagnitude, AttributeBaseValue, AttributeBonusMagnitude }
-
-	public enum GameplayEffectDurationType { Instant, Infinite, HasDuration, /*HasTurn*/ }
-
-	public enum GameplayEffectStackingType { None, AggregateBySource, AggregateByTarget }
-
-	public enum GameplayEffectStackingDurationPolicy { RefreshOnSuccessfulApplication, NeverRefresh }
-
-	public enum GameplayEffectStackingPeriodPolicy { ResetOnSuccessfulApplication, NeverReset }
-
-	public enum GameplayEffectStackingExpirationPolicy { ClearEntireStack, RemoveSingleStackAndRefreshDuration, RefreshDuration }
-
-	public enum GameplayEffectPeriodInhibitionRemovedPolicy { NeverReset, ResetPeriod, ExecuteAndResetPeriod }
+	public enum AttributeBasedFloatCalculationType
+	{
+		AttributeMagnitude,
+		AttributeBaseValue,
+		AttributeBonusMagnitude,
+		AttributeMagnitudeEvaluatedUpToChannel
+	}
 
 	public static class GameplayEffectConstants
 	{
@@ -38,7 +38,7 @@ namespace GameplayAbilities
 	}
 
 	[Serializable]
-	public class AttributeBasedFloat
+	public struct AttributeBasedFloat
 	{
 		public ScalableFloat Coefficient;
 		public ScalableFloat PreMultiplyAdditiveValue;
@@ -46,85 +46,91 @@ namespace GameplayAbilities
 		public GameplayEffectAttributeCaptureDefinition BackingAttribute;
 		public AnimationCurve AttributeCurve;
 		public AttributeBasedFloatCalculationType AttributeCalculationType;
-		[NonSerialized]
 		public GameplayModEvaluationChannel FinalChannel;
 		public GameplayTagContainer SourceTagFilter;
 		public GameplayTagContainer TargetTagFilter;
 
-		public AttributeBasedFloat(float coefficient = 1, float preMultiplyAdditiveValue = 0, float postMultiplyAdditiveValue = 0)
+		public AttributeBasedFloat(float coefficient = 1, float preMultiplyAdditiveValue = 0, float postMultiplyAdditiveValue = 0, AttributeBasedFloatCalculationType attributeCalculationType = AttributeBasedFloatCalculationType.AttributeMagnitude, GameplayModEvaluationChannel finalChannel = GameplayModEvaluationChannel.Channel0)
 		{
 			Coefficient = new ScalableFloat(coefficient);
 			PreMultiplyAdditiveValue = new ScalableFloat(preMultiplyAdditiveValue);
 			PostMultiplyAdditiveValue = new ScalableFloat(postMultiplyAdditiveValue);
 			BackingAttribute = new GameplayEffectAttributeCaptureDefinition();
 			AttributeCurve = null;
-			AttributeCalculationType = AttributeBasedFloatCalculationType.AttributeMagnitude;
-			FinalChannel = GameplayModEvaluationChannel.Channel0;
+			AttributeCalculationType = attributeCalculationType;
+			FinalChannel = finalChannel;
 			SourceTagFilter = new GameplayTagContainer();
 			TargetTagFilter = new GameplayTagContainer();
 		}
 
-		public float CalculateMagnitude(in GameplayEffectSpec relevant_spec)
+		public readonly float CalculateMagnitude(in GameplayEffectSpec relevantSpec)
 		{
-			var capture_spec = relevant_spec.CapturedRelevantAttributes.FindCaptureSpecByDefinition(BackingAttribute, true);
+			GameplayEffectAttributeCaptureSpec captureSpec = relevantSpec.CapturedRelevantAttributes.FindCaptureSpecByDefinition(BackingAttribute, true);
 
-			float attribute_value = 0;
+			float attributeValue = 0;
 
 			if (AttributeCalculationType == AttributeBasedFloatCalculationType.AttributeBaseValue)
 			{
-				capture_spec.AttemptCalculateAttributeBaseValue(ref attribute_value);
+				captureSpec.AttemptCalculateAttributeBaseValue(ref attributeValue);
 			}
 			else
 			{
-				var evaluation_parameters = new AggregatorEvaluateParameters();
-				evaluation_parameters.SourceTags = relevant_spec.CapturedSourceTags.AggregatedTags;
-				evaluation_parameters.TargetTags = relevant_spec.CapturedTargetTags.AggregatedTags;
-				evaluation_parameters.AppliedSourceTagFilter = SourceTagFilter;
-				evaluation_parameters.AppliedTargetTagFilter = TargetTagFilter;
+				AggregatorEvaluateParameters evaluationParameters = new AggregatorEvaluateParameters();
+				evaluationParameters.SourceTags = relevantSpec.CapturedSourceTags.AggregatedTags;
+				evaluationParameters.TargetTags = relevantSpec.CapturedTargetTags.AggregatedTags;
+				evaluationParameters.AppliedSourceTagFilter = SourceTagFilter;
+				evaluationParameters.AppliedTargetTagFilter = TargetTagFilter;
+
 				if (AttributeCalculationType == AttributeBasedFloatCalculationType.AttributeMagnitude)
 				{
-					capture_spec.AttemptCalculateAttributeMagnitude(evaluation_parameters, ref attribute_value);
+					captureSpec.AttemptCalculateAttributeMagnitude(evaluationParameters, ref attributeValue);
 				}
 				else if (AttributeCalculationType == AttributeBasedFloatCalculationType.AttributeBonusMagnitude)
 				{
-					capture_spec.AttemptCalculateAttributeBonusMagnitude(evaluation_parameters, ref attribute_value);
+					captureSpec.AttemptCalculateAttributeBonusMagnitude(evaluationParameters, ref attributeValue);
+				}
+				else if (AttributeCalculationType == AttributeBasedFloatCalculationType.AttributeMagnitudeEvaluatedUpToChannel)
+				{
+					bool requestingValidChannel = AbilitySystemGlobals.Instance.IsGameplayModEvaluationChannelValid(FinalChannel);
+					GameplayModEvaluationChannel channelToUse = requestingValidChannel ? FinalChannel : GameplayModEvaluationChannel.Channel0;
+					captureSpec.AttemptCalculateAttributeMagnitudeEvaluatedUpToChannel(evaluationParameters, channelToUse, ref attributeValue);
 				}
 			}
 
-			var spec_level = relevant_spec.Level;
-			return Coefficient.GetValueAtLevel(spec_level) * (attribute_value + PreMultiplyAdditiveValue.GetValueAtLevel(spec_level)) + PostMultiplyAdditiveValue.GetValueAtLevel(spec_level);
+			if (AttributeCurve != null)
+			{
+				attributeValue = AttributeCurve.Evaluate(attributeValue);
+			}
+
+			float specLevel = relevantSpec.Level;
+			return Coefficient.GetValueAtLevel(specLevel) * (attributeValue + PreMultiplyAdditiveValue.GetValueAtLevel(specLevel)) + PostMultiplyAdditiveValue.GetValueAtLevel(specLevel);
 		}
 
 		public static bool operator ==(AttributeBasedFloat a, AttributeBasedFloat b)
 		{
-			if (!a.Coefficient.Equals(b.Coefficient))
+			if (a.Coefficient != b.Coefficient ||
+				a.PreMultiplyAdditiveValue != b.PreMultiplyAdditiveValue ||
+				a.PostMultiplyAdditiveValue != b.PostMultiplyAdditiveValue ||
+				a.BackingAttribute != b.BackingAttribute ||
+				a.AttributeCurve != b.AttributeCurve ||
+				a.AttributeCalculationType != b.AttributeCalculationType ||
+				a.FinalChannel != b.FinalChannel)
 			{
 				return false;
 			}
-			if (!a.PreMultiplyAdditiveValue.Equals(b.PreMultiplyAdditiveValue))
+
+			if (a.SourceTagFilter.Count != b.SourceTagFilter.Count ||
+				!a.SourceTagFilter.HasAllExact(b.SourceTagFilter))
 			{
 				return false;
 			}
-			if (!a.PostMultiplyAdditiveValue.Equals(b.PostMultiplyAdditiveValue))
+
+			if (a.TargetTagFilter.Count != b.TargetTagFilter.Count ||
+				!a.TargetTagFilter.HasAllExact(b.TargetTagFilter))
 			{
 				return false;
 			}
-			if (a.AttributeCalculationType != b.AttributeCalculationType)
-			{
-				return false;
-			}
-			if (a.BackingAttribute != b.BackingAttribute)
-			{
-				return false;
-			}
-			if (a.SourceTagFilter != b.SourceTagFilter)
-			{
-				return false;
-			}
-			if (a.TargetTagFilter != b.TargetTagFilter)
-			{
-				return false;
-			}
+
 			return true;
 		}
 
@@ -134,19 +140,252 @@ namespace GameplayAbilities
 		}
 	}
 
-	public enum GameplayEffectScopedModifierAggregatorType { CapturedAttributeBacked, Transient }
+	public class CustomCalculationBasedFloat
+	{
+		public GameplayModMagnitudeCalculation CalculationClassMagnitude;
+		public ScalableFloat Coefficient;
+		public ScalableFloat PreMultiplyAdditiveValue;
+		public ScalableFloat PostMultiplyAdditiveValue;
+
+		public float CalculateMagnitude(in GameplayEffectSpec relevantSpec)
+		{
+			float magnitude = 0;
+			// CalculationClassMagnitude.CalculateMagnitude(relevantSpec, out magnitude);
+			return magnitude;
+		}
+
+		public static bool operator ==(CustomCalculationBasedFloat a, CustomCalculationBasedFloat b)
+		{
+			return a.CalculationClassMagnitude == b.CalculationClassMagnitude && a.Coefficient == b.Coefficient && a.PreMultiplyAdditiveValue == b.PreMultiplyAdditiveValue && a.PostMultiplyAdditiveValue == b.PostMultiplyAdditiveValue;
+		}
+
+		public static bool operator !=(CustomCalculationBasedFloat a, CustomCalculationBasedFloat b)
+		{
+			return !(a == b);
+		}
+	}
+
+	public struct SetByCallerFloat
+	{
+		public string DataName;
+		public GameplayTag DataTag;
+	}
 
 	[Serializable]
-	public struct GameplayEffectExecutionScopedModifierInfo
+	public class GameplayEffectModifierMagnitude
+	{
+		public GameplayEffectMagnitudeCalculation MagnitudeCalculationType;
+
+#if ODIN_INSPECTOR
+		[ShowIf("MagnitudeCalculationType", GameplayEffectMagnitudeCalculation.ScalableFloat)]
+#endif
+		public ScalableFloat ScalableFloatMagnitude;
+
+#if ODIN_INSPECTOR
+		[ShowIf("MagnitudeCalculationType", GameplayEffectMagnitudeCalculation.AttributeBased)]
+#endif
+		public AttributeBasedFloat AttributeBasedMagnitude;
+
+#if ODIN_INSPECTOR
+		[ShowIf("MagnitudeCalculationType", GameplayEffectMagnitudeCalculation.CustomCalculationClass)]
+#endif
+		public CustomCalculationBasedFloat CustomMagnitude;
+
+#if ODIN_INSPECTOR
+		[ShowIf("MagnitudeCalculationType", GameplayEffectMagnitudeCalculation.SetByCaller)]
+#endif
+		public SetByCallerFloat SetByCallerMagnitude;
+
+		public GameplayEffectModifierMagnitude()
+		{
+			MagnitudeCalculationType = GameplayEffectMagnitudeCalculation.ScalableFloat;
+		}
+
+		public GameplayEffectModifierMagnitude(in ScalableFloat value)
+		{
+			MagnitudeCalculationType = GameplayEffectMagnitudeCalculation.ScalableFloat;
+			ScalableFloatMagnitude = value;
+		}
+
+		public GameplayEffectModifierMagnitude(in AttributeBasedFloat value)
+		{
+			MagnitudeCalculationType = GameplayEffectMagnitudeCalculation.AttributeBased;
+			AttributeBasedMagnitude = value;
+		}
+
+		public GameplayEffectModifierMagnitude(in SetByCallerFloat value)
+		{
+			MagnitudeCalculationType = GameplayEffectMagnitudeCalculation.SetByCaller;
+			SetByCallerMagnitude = value;
+		}
+
+		public static bool operator ==(GameplayEffectModifierMagnitude a, GameplayEffectModifierMagnitude b)
+		{
+			if (a.MagnitudeCalculationType != b.MagnitudeCalculationType)
+			{
+				return false;
+			}
+
+			switch (a.MagnitudeCalculationType)
+			{
+				case GameplayEffectMagnitudeCalculation.ScalableFloat:
+					if (a.ScalableFloatMagnitude != b.ScalableFloatMagnitude)
+					{
+						return false;
+					}
+					break;
+				case GameplayEffectMagnitudeCalculation.AttributeBased:
+					if (a.AttributeBasedMagnitude != b.AttributeBasedMagnitude)
+					{
+						return false;
+					}
+					break;
+				case GameplayEffectMagnitudeCalculation.CustomCalculationClass:
+					if (a.CustomMagnitude != b.CustomMagnitude)
+					{
+						return false;
+					}
+					break;
+				case GameplayEffectMagnitudeCalculation.SetByCaller:
+					if (a.SetByCallerMagnitude.DataName != b.SetByCallerMagnitude.DataName)
+					{
+						return false;
+					}
+					break;
+			}
+
+			return true;
+		}
+
+		public static bool operator !=(GameplayEffectModifierMagnitude a, GameplayEffectModifierMagnitude b)
+		{
+			return !(a == b);
+		}
+
+		public bool CanCalculateMagnitude(in GameplayEffectSpec relevantSpec)
+		{
+			List<GameplayEffectAttributeCaptureDefinition> reqCaptureDefs = new();
+
+			GetAttributeCaptureDefinitions(reqCaptureDefs);
+
+			return relevantSpec.HasValidCapturedAttributes(reqCaptureDefs);
+		}
+
+		public bool AttemptCalculateMagnitude(in GameplayEffectSpec relevantSpec, ref float calculatedMagnitude, bool warnIfSetByCallerFail = true, float defaultSetByCaller = 0)
+		{
+			bool canCalc = CanCalculateMagnitude(relevantSpec);
+			if (canCalc)
+			{
+				switch (MagnitudeCalculationType)
+				{
+					case GameplayEffectMagnitudeCalculation.ScalableFloat:
+						calculatedMagnitude = ScalableFloatMagnitude.GetValueAtLevel(relevantSpec.Level);
+						break;
+					case GameplayEffectMagnitudeCalculation.AttributeBased:
+						calculatedMagnitude = AttributeBasedMagnitude.CalculateMagnitude(relevantSpec);
+						break;
+					case GameplayEffectMagnitudeCalculation.CustomCalculationClass:
+						calculatedMagnitude = CustomMagnitude.CalculateMagnitude(relevantSpec);
+						break;
+					case GameplayEffectMagnitudeCalculation.SetByCaller:
+						if (SetByCallerMagnitude.DataTag.IsValid())
+						{
+							calculatedMagnitude = relevantSpec.GetSetByCallerMagnitude(SetByCallerMagnitude.DataTag, warnIfSetByCallerFail, defaultSetByCaller);
+						}
+						else
+						{
+							calculatedMagnitude = relevantSpec.GetSetByCallerMagnitude(SetByCallerMagnitude.DataName, warnIfSetByCallerFail, defaultSetByCaller);
+						}
+						break;
+					default:
+						Debug.LogError($"Unknown MagnitudeCalculationType {MagnitudeCalculationType} in AttemptCalculateMagnitude");
+						calculatedMagnitude = 0;
+						break;
+				}
+			}
+			else
+			{
+				calculatedMagnitude = 0;
+			}
+
+			return canCalc;
+		}
+
+		public bool AttemptRecalculateMagnitudeFromDependentAggregatorChange(in GameplayEffectSpec relevantSpec, ref float calculatedMagnitude, in Aggregator changedAggregator)
+		{
+			List<GameplayEffectAttributeCaptureDefinition> reqCaptureDefs = new();
+
+			GetAttributeCaptureDefinitions(reqCaptureDefs);
+
+			foreach (GameplayEffectAttributeCaptureDefinition captureDef in reqCaptureDefs)
+			{
+				if (captureDef.Snapshot == false)
+				{
+					GameplayEffectAttributeCaptureSpec captureSpec = relevantSpec.CapturedRelevantAttributes.FindCaptureSpecByDefinition(captureDef, true);
+					if (captureSpec != null && captureSpec.ShouldRefreshLinkedAggregator(changedAggregator))
+					{
+						return AttemptCalculateMagnitude(relevantSpec, ref calculatedMagnitude);
+					}
+				}
+			}
+
+			return false;
+		}
+
+		public void GetAttributeCaptureDefinitions(List<GameplayEffectAttributeCaptureDefinition> captureDefs)
+		{
+			captureDefs.Clear();
+			switch (MagnitudeCalculationType)
+			{
+				case GameplayEffectMagnitudeCalculation.AttributeBased:
+					captureDefs.Add(AttributeBasedMagnitude.BackingAttribute);
+					break;
+				case GameplayEffectMagnitudeCalculation.CustomCalculationClass:
+					// captureDefs.Add(CustomMagnitude.CalculationClassMagnitude.CaptureAttribute);
+					break;
+			}
+		}
+	}
+
+	public enum GameplayEffectScopedModifierAggregatorType
+	{
+		CapturedAttributeBacked,
+		Transient
+	}
+
+	[Serializable]
+	public class GameplayEffectExecutionScopedModifierInfo
 	{
 		public GameplayEffectAttributeCaptureDefinition CaptureAttribute;
+		[HideInInspector]
 		public GameplayTag TransientAggregatorIdentifier;
+		[HideInInspector]
 		public GameplayEffectScopedModifierAggregatorType AggregatorType;
 		public GameplayModOp ModifierOp;
 		public GameplayEffectModifierMagnitude ModifierMagnitude;
 		public GameplayModEvaluationChannelSettings EvaluationChannelSettings;
 		public GameplayTagRequirements SourceTags;
 		public GameplayTagRequirements TargetTags;
+
+		public GameplayEffectExecutionScopedModifierInfo()
+		{
+			AggregatorType = GameplayEffectScopedModifierAggregatorType.CapturedAttributeBacked;
+			ModifierOp = GameplayModOp.Additive;
+		}
+
+		public GameplayEffectExecutionScopedModifierInfo(in GameplayEffectAttributeCaptureDefinition captureDef)
+		{
+			CaptureAttribute = captureDef;
+			AggregatorType = GameplayEffectScopedModifierAggregatorType.CapturedAttributeBacked;
+			ModifierOp = GameplayModOp.Additive;
+		}
+
+		public GameplayEffectExecutionScopedModifierInfo(in GameplayTag transientAggregatorIdentifier)
+		{
+			TransientAggregatorIdentifier = transientAggregatorIdentifier;
+			AggregatorType = GameplayEffectScopedModifierAggregatorType.Transient;
+			ModifierOp = GameplayModOp.Additive;
+		}
 	}
 
 	[Serializable]
@@ -155,14 +394,14 @@ namespace GameplayAbilities
 		public GameplayEffect Effect;
 		public GameplayTagContainer RequiredSourceTags;
 
-		public bool CanApply(in GameplayTagContainer sourceTags, float sourceLevel)
+		public readonly bool CanApply(in GameplayTagContainer sourceTags, float sourceLevel)
 		{
 			return sourceTags.HasAll(RequiredSourceTags);
 		}
 
-		public GameplayEffectSpecHandle CreateSpec(GameplayEffectContextHandle effectContext, float sourceLevel)
+		public readonly GameplayEffectSpecHandle CreateSpec(GameplayEffectContextHandle effectContext, float sourceLevel)
 		{
-			return Effect ? new GameplayEffectSpecHandle(new GameplayEffectSpec(Effect, effectContext, sourceLevel)) : new GameplayEffectSpecHandle();
+			return Effect != null ? new GameplayEffectSpecHandle(new GameplayEffectSpec(Effect, effectContext, sourceLevel)) : new GameplayEffectSpecHandle();
 		}
 
 		public static bool operator ==(ConditionalGameplayEffect a, ConditionalGameplayEffect b)
@@ -180,379 +419,341 @@ namespace GameplayAbilities
 	public struct GameplayEffectExecutionDefinition
 	{
 		public GameplayEffectExecutionCalculation CalculationClass;
+
+#if ODIN_INSPECTOR
+		[ShowIf("@CalculationClass != null && CalculationClass.RequiresPassedInTags")]
+#endif
 		public GameplayTagContainer PassedInTags;
+
+#if ODIN_INSPECTOR
+		[ShowIf("@CalculationClass != null && (CalculationClass.RelevantAttributesToCapture.Count > 0 || CalculationClass.InvalidScopedModifierAttributes.Count > 0 || CalculationClass.ValidTransientAggregatorIdentifiers.Count > 0)")]
+#endif
 		public List<GameplayEffectExecutionScopedModifierInfo> CalculationModifiers;
+
 		public List<ConditionalGameplayEffect> ConditionalGameplayEffects;
 
-		public void GetAttributeCaptureDefinitions(List<GameplayEffectAttributeCaptureDefinition> capture_defs)
+		public readonly void GetAttributeCaptureDefinitions(List<GameplayEffectAttributeCaptureDefinition> captureDefs)
 		{
-			capture_defs.Clear();
+			captureDefs.Clear();
 
-			foreach (GameplayEffectExecutionScopedModifierInfo cur_scoped_mod in CalculationModifiers)
+			foreach (GameplayEffectExecutionScopedModifierInfo curScopedMod in CalculationModifiers)
 			{
-				List<GameplayEffectAttributeCaptureDefinition> scoped_mod_mag_defs = new();
-				cur_scoped_mod.ModifierMagnitude.GetAttributeCaptureDefinitions(scoped_mod_mag_defs);
+				List<GameplayEffectAttributeCaptureDefinition> scopedModMagDefs = new();
+				curScopedMod.ModifierMagnitude.GetAttributeCaptureDefinitions(scopedModMagDefs);
 
-				capture_defs.AddRange(scoped_mod_mag_defs);
+				captureDefs.AddRange(scopedModMagDefs);
 			}
 		}
 	}
 
-	[CreateAssetMenu(fileName = "GameplayEffect", menuName = "GameplayAbilities/GameplayEffect", order = 0)]
-	public class GameplayEffect : ScriptableObject
+	[Serializable]
+	public class GameplayModifierInfo
 	{
 #if ODIN_INSPECTOR
-		[FoldoutGroup("Duration")]
+		[HideLabel]
 #endif
-		public GameplayEffectDurationType DurationPolicy;
+		public GameplayAttribute Attribute = new();
+		public GameplayModOp ModifierOp = GameplayModOp.Additive;
+		public GameplayEffectModifierMagnitude ModifierMagnitude = new();
+		public GameplayModEvaluationChannelSettings EvaluationChannelSettings;
+		public GameplayTagRequirements SourceTags;
+		public GameplayTagRequirements TargetTags;
 
-#if ODIN_INSPECTOR
-		[FoldoutGroup("Duration")]
-		[ShowIf("DurationPolicy", GameplayEffectDurationType.HasDuration)]
-#endif
-		public GameplayEffectModifierMagnitude DurationMagnitude = new();
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("Duration")]
-		[HideIf("DurationPolicy", GameplayEffectDurationType.Instant)]
-#endif
-		public ScalableFloat Period = new();
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("Duration")]
-		[ShowIf("@Period.Value != 0")]
-#endif
-		public bool ExecutePeriodicEffectOnApplication = true;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("Duration")]
-		[ShowIf("@Period.Value != 0")]
-#endif
-		public GameplayEffectPeriodInhibitionRemovedPolicy PeriodInhibitionPolicy;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-		[LabelText("Components")]
-		[InlineEditor]
-#endif
-		[SerializeReference]
-		public List<GameplayEffectComponent> GEComponents = new();
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-#endif
-		public List<GameplayModifierInfo> Modifiers = new();
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-#endif
-		public List<GameplayEffectExecutionDefinition> Executions = new();
-
-#if ODIN_INSPECTOR
-		[Title("Deprecated")]
-		[FoldoutGroup("GameplayEffect")]
-		[LabelText("Gameplay Effect Asset Tags")]
-#endif
-		public InheritedTagContainer InheritableGameplayEffectTags = new();
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-		[LabelText("Granted Tags")]
-#endif
-		public InheritedTagContainer InheritableOwnedTagsContainer = new();
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-		[LabelText("Granted Blocked Ability Tags")]
-#endif
-		public InheritedTagContainer InheritableBlockedAbilityTagsContainer;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-		[LabelText("Ongoing Tag Requirements")]
-#endif
-		public GameplayTagRequirements OngoingTagRequirements;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-		[LabelText("Application Tag Requirements")]
-#endif
-		public GameplayTagRequirements ApplicationTagRequirements;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-#endif
-		public GameplayTagRequirements RemovalTagRequirements;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-#endif
-		public InheritedTagContainer RemoveGameplayEffectWithTags;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-#endif
-		public GameplayTagRequirements GrantedApplicationImmunityTags;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-#endif
-		public GameplayEffectQuery GrantedApplicationImmunityQuery;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-#endif
-		public bool HasGrantedApplicationImmunityTags;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-#endif
-		public GameplayEffectQuery RemoveGameplayEffectQuery;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("GameplayEffect")]
-#endif
-		public bool HasRemoveGameplayEffectQuery;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("Stacking")]
-#endif
-		public GameplayEffectStackingType StackingType;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("Stacking")]
-		[HideIf("StackingType", GameplayEffectStackingType.None)]
-#endif
-		public int StackLimitCount;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("Stacking")]
-		[HideIf("StackingType", GameplayEffectStackingType.None)]
-#endif
-		public GameplayEffectStackingDurationPolicy StackDurationRefreshPolicy;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("Stacking")]
-		[HideIf("StackingType", GameplayEffectStackingType.None)]
-#endif
-		public GameplayEffectStackingPeriodPolicy StackPeriodResetPolicy;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("Stacking")]
-		[HideIf("StackingType", GameplayEffectStackingType.None)]
-#endif
-		public GameplayEffectStackingExpirationPolicy StackExpirationPolicy;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("Stacking")]
-#endif
-		public List<GameplayEffect> OverflowEffects = new();
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("Stacking")]
-#endif
-		public bool DenyOverflowApplication;
-
-#if ODIN_INSPECTOR
-		[FoldoutGroup("Stacking")]
-		[ShowIf("DenyOverflowApplication", true)]
-#endif
-		public bool ClearStackOnOverflow;
-
-		[HideInInspector]
-		public GameplayTagContainer CachedAssetTags = new();
-
-		[HideInInspector]
-		public GameplayTagContainer CachedGrantedTags = new();
-
-		[HideInInspector]
-		public GameplayTagContainer CachedBlockedAbilityTags = new();
-
-		public GameplayTagContainer AssetTags => CachedAssetTags;
-
-		public GameplayTagContainer GrantedTags => CachedGrantedTags;
-
-		public GameplayTagContainer BlockedAbilityTags => CachedBlockedAbilityTags;
-
-		protected virtual void OnValidate()
+		public static bool operator ==(GameplayModifierInfo a, GameplayModifierInfo b)
 		{
-			ConvertAssetTagsComponent();
-			ConvertRemoveOtherComponent();
-			ConvertTagRequirementsComponent();
-			ConvertTargetTagsComponent();
+			return a.Attribute == b.Attribute && a.ModifierOp == b.ModifierOp && a.ModifierMagnitude == b.ModifierMagnitude && a.EvaluationChannelSettings == b.EvaluationChannelSettings && a.SourceTags == b.SourceTags && a.TargetTags == b.TargetTags;
 		}
 
-		public void OnGameplayEffectChanged()
+		public static bool operator !=(GameplayModifierInfo a, GameplayModifierInfo b)
 		{
-			CachedAssetTags.Reset();
-			CachedGrantedTags.Reset();
-			CachedBlockedAbilityTags.Reset();
+			return !(a == b);
+		}
+	}
 
-			foreach (GameplayEffectComponent GEComponent in GEComponents)
+	[Serializable]
+	public class InheritedTagContainer
+	{
+#if ODIN_INSPECTOR
+		[ReadOnly]
+#endif
+		public GameplayTagContainer CombinedTags = new();
+
+		public GameplayTagContainer Added = new();
+
+		public GameplayTagContainer Removed = new();
+
+		public void UpdateInheritedTagProperties(in InheritedTagContainer parent)
+		{
+			CombinedTags.Reset();
+
+			if (parent is not null)
 			{
-				if (GEComponent != null)
+				foreach (GameplayTag tag in parent.CombinedTags)
 				{
-					GEComponent.OnGameplayEffectChanged();
+					if (!tag.MatchesAny(Removed))
+					{
+						CombinedTags.AddTag(tag);
+					}
+				}
+			}
+
+			foreach (GameplayTag tag in Added)
+			{
+				if (!Removed.HasTagExact(tag))
+				{
+					CombinedTags.AddTag(tag);
 				}
 			}
 		}
 
-		public bool CanApply(in ActiveGameplayEffectsContainer active_ge_container, in GameplayEffectSpec ge_spec)
+		public void ApplyTo(GameplayTagContainer applyToContainer)
 		{
-			foreach (var ge_component in GEComponents)
+			if (applyToContainer.IsEmpty() && !CombinedTags.IsEmpty())
 			{
-				if (!ge_component.CanGameplayEffectApply(active_ge_container, ge_spec))
-				{
-					return false;
-				}
+				applyToContainer.CopyFrom(CombinedTags);
 			}
+			else
+			{
+				GameplayTagContainer removesThatApply = Removed.Filter(applyToContainer);
+				GameplayTagContainer removeOverridesAdd = Added.FilterExact(Removed);
+				removesThatApply.AppendTags(removeOverridesAdd);
+
+				applyToContainer.AppendTags(Added);
+				applyToContainer.RemoveTags(removesThatApply);
+			}
+		}
+
+		public void AddTag(in GameplayTag tagToAdd)
+		{
+			CombinedTags.AddTag(tagToAdd);
+		}
+
+		public void RemoveTag(in GameplayTag tagToRemove)
+		{
+			CombinedTags.RemoveTag(tagToRemove);
+		}
+
+		public static bool operator ==(InheritedTagContainer a, InheritedTagContainer b)
+		{
+			return a.CombinedTags == b.CombinedTags && a.Added == b.Added && a.Removed == b.Removed;
+		}
+
+		public static bool operator !=(InheritedTagContainer a, InheritedTagContainer b)
+		{
+			return !(a == b);
+		}
+	}
+
+	public enum GameplayEffectDurationType
+	{
+		Instant,
+		Infinite,
+		HasDuration,
+		/*HasTurn*/
+	}
+
+	public enum GameplayEffectStackingDurationPolicy
+	{
+		RefreshOnSuccessfulApplication,
+		NeverRefresh
+	}
+
+	public enum GameplayEffectStackingPeriodPolicy
+	{
+		ResetOnSuccessfulApplication,
+		NeverReset
+	}
+
+	public enum GameplayEffectStackingExpirationPolicy
+	{
+		ClearEntireStack,
+		RemoveSingleStackAndRefreshDuration,
+		RefreshDuration
+	}
+
+	public enum GameplayEffectPeriodInhibitionRemovedPolicy
+	{
+		NeverReset,
+		ResetPeriod,
+		ExecuteAndResetPeriod
+	}
+
+	public class ModifierSpec
+	{
+		public float EvaluatedMagnitude;
+	}
+
+	public class GameplayEffectModifiedAttribute
+	{
+		public GameplayAttribute Attribute;
+		public float TotalMagnitude;
+	}
+
+	public class GameplayEffectAttributeCaptureSpec
+	{
+		public GameplayEffectAttributeCaptureDefinition BackingDefinition;
+		public Aggregator AttributeAggregator;
+
+		public GameplayEffectAttributeCaptureSpec(GameplayEffectAttributeCaptureDefinition definition)
+		{
+			BackingDefinition = definition;
+			AttributeAggregator = new Aggregator();
+		}
+
+		public bool HasValidCapture()
+		{
+			return AttributeAggregator is not null;
+		}
+
+		public bool AttemptCalculateAttributeBaseValue(ref float base_value)
+		{
+			if (AttributeAggregator is not null)
+			{
+				base_value = AttributeAggregator.BaseValue;
+				return true;
+			}
+			return false;
+		}
+
+		public bool AttemptCalculateAttributeMagnitude(AggregatorEvaluateParameters eval_params, ref float magnitude)
+		{
+			if (AttributeAggregator is not null)
+			{
+				magnitude = AttributeAggregator.Evaluate(eval_params);
+				return true;
+			}
+			return false;
+		}
+
+		public bool AttemptCalculateAttributeBonusMagnitude(AggregatorEvaluateParameters evalParams, ref float magnitude)
+		{
+			if (AttributeAggregator is not null)
+			{
+				magnitude = AttributeAggregator.EvaluateBonus(evalParams);
+				return true;
+			}
+			return false;
+		}
+
+		public bool AttemptCalculateAttributeMagnitudeEvaluatedUpToChannel(AggregatorEvaluateParameters evalParams, GameplayModEvaluationChannel finalChannel, ref float magnitude)
+		{
+			if (AttributeAggregator is not null)
+			{
+				magnitude = AttributeAggregator.EvaluateToChannel(evalParams, finalChannel);
+				return true;
+			}
+
+			return false;
+		}
+
+		public bool ShouldRefreshLinkedAggregator(Aggregator changed_aggregator)
+		{
+			return BackingDefinition.Snapshot == false && (changed_aggregator is null || changed_aggregator == AttributeAggregator);
+		}
+
+		public void RegisterLinkedAggregatorCallbacks(ActiveGameplayEffectHandle handle)
+		{
+			if (BackingDefinition.Snapshot == false)
+			{
+				AttributeAggregator.AddDependent(handle);
+			}
+		}
+
+		public void UnregisterLinkedAggregatorCallbacks(ActiveGameplayEffectHandle handle)
+		{
+			AttributeAggregator.RemoveDependent(handle);
+		}
+
+		public bool AttemptAddAggregatorModsToAggregator(Aggregator aggregatorToAddTo)
+		{
+			aggregatorToAddTo.AddModsFrom(AttributeAggregator);
 			return true;
 		}
+	}
 
-		public bool OnAddedToActiveContainer(ActiveGameplayEffectsContainer active_ge_container, ActiveGameplayEffect active_ge)
+	public class GameplayEffectAttributeCaptureSpecContainer
+	{
+		public List<GameplayEffectAttributeCaptureSpec> SourceAttributes = new();
+		public List<GameplayEffectAttributeCaptureSpec> TargetAttributes = new();
+
+		public GameplayEffectAttributeCaptureSpec FindCaptureSpecByDefinition(GameplayEffectAttributeCaptureDefinition definition, bool only_include_valid_capture)
 		{
-			var should_be_active = true;
-			foreach (var ge_component in GEComponents)
+			bool source_attribute = definition.AttributeSource == GameplayEffectAttributeCaptureSource.Source;
+			List<GameplayEffectAttributeCaptureSpec> attribute_array = source_attribute ? SourceAttributes : TargetAttributes;
+
+			GameplayEffectAttributeCaptureSpec matching_spec = attribute_array.Find((element) => element.BackingDefinition == definition);
+
+			if (matching_spec is not null && only_include_valid_capture && !matching_spec.HasValidCapture())
 			{
-				should_be_active = ge_component.OnActiveGameplayEffectAdded(active_ge_container, active_ge);
+				matching_spec = null;
 			}
-			return should_be_active;
+
+			return matching_spec;
 		}
 
-		public void OnExecuted(ActiveGameplayEffectsContainer active_ge_container, GameplayEffectSpec ge_spec)
+		public bool HasValidCapturedAttributes(in List<GameplayEffectAttributeCaptureDefinition> capture_defs_to_check)
 		{
-			foreach (var ge_component in GEComponents)
-			{
-				ge_component.OnGameplayEffectExecuted(active_ge_container, ge_spec);
-			}
-		}
+			bool has_valid = true;
 
-		public void OnApplied(ActiveGameplayEffectsContainer active_ge_container, GameplayEffectSpec ge_spec)
-		{
-			foreach (var ge_component in GEComponents)
+			foreach (GameplayEffectAttributeCaptureDefinition cur_def in capture_defs_to_check)
 			{
-				ge_component.OnGameplayEffectApplied(active_ge_container, ge_spec);
-			}
-		}
-
-		public T GetComponent<T>() where T : GameplayEffectComponent
-		{
-			foreach (var GEComponent in GEComponents)
-			{
-				if (GEComponent is T component)
+				GameplayEffectAttributeCaptureSpec capture_spec = FindCaptureSpecByDefinition(cur_def, true);
+				if (capture_spec is null)
 				{
-					return component;
+					has_valid = false;
+					break;
 				}
 			}
-			return null;
+
+			return has_valid;
 		}
 
-		public T AddComponent<T>() where T : GameplayEffectComponent, new()
+		public void CaptureAttributes(AbilitySystemComponent ability_system_component, GameplayEffectAttributeCaptureSource capture_source)
 		{
-			var component = new T();
-			GEComponents.Add(component);
-			return component;
-		}
-
-		public T GetOrAddComponent<T>() where T : GameplayEffectComponent, new()
-		{
-			var component = GetComponent<T>();
-			if (component == null)
+			if (ability_system_component != null)
 			{
-				component = new T();
-				GEComponents.Add(component);
-			}
-			return component;
-		}
-
-		private void ConvertAssetTagsComponent()
-		{
-			GameplayEffect archetype = AssetDatabase.LoadAssetAtPath<GameplayEffect>("Assets/GameplayEffects/GameplayEffect.asset");
-
-			bool changed = InheritableGameplayEffectTags.CombinedTags != archetype.InheritableGameplayEffectTags.CombinedTags;
-			if (changed)
-			{
-				AssetTagsGameplayEffectComponent assetTagsComponent = GetOrAddComponent<AssetTagsGameplayEffectComponent>();
-				assetTagsComponent.SetAndApplyAssetTagChanges(InheritableGameplayEffectTags);
-			}
-
-			{
-				AssetTagsGameplayEffectComponent assetTagsComponent = GetComponent<AssetTagsGameplayEffectComponent>();
-				if (assetTagsComponent != null)
+				bool source_component = capture_source == GameplayEffectAttributeCaptureSource.Source;
+				List<GameplayEffectAttributeCaptureSpec> attribute_array = source_component ? SourceAttributes : TargetAttributes;
+				foreach (GameplayEffectAttributeCaptureSpec cur_capture_spec in attribute_array)
 				{
-					InheritableGameplayEffectTags = assetTagsComponent.ConfiguredAssetTags;
-					InheritableGameplayEffectTags.UpdateInheritedTagProperties(archetype.InheritableGameplayEffectTags);
+					ability_system_component.CaptureAttributeForGameplayEffect(cur_capture_spec);
 				}
 			}
 		}
 
-		private void ConvertRemoveOtherComponent()
+		public void AddCaptureDefinition(GameplayEffectAttributeCaptureDefinition capture_definition)
 		{
-			GameplayEffect archetype = AssetDatabase.LoadAssetAtPath<GameplayEffect>("Assets/GameplayEffects/GameplayEffect.asset");
-
-			bool tagChanged = RemoveGameplayEffectWithTags != archetype.RemoveGameplayEffectWithTags;
-			bool queryChanged = RemoveGameplayEffectQuery != archetype.RemoveGameplayEffectQuery;
-
-			bool changed = tagChanged || queryChanged;
-			if (changed)
+			bool source_attribute = capture_definition.AttributeSource == GameplayEffectAttributeCaptureSource.Source;
+			List<GameplayEffectAttributeCaptureSpec> attribute_array = source_attribute ? SourceAttributes : TargetAttributes;
+			if (!attribute_array.Exists((element) => element.BackingDefinition == capture_definition))
 			{
-				RemoveOtherGameplayEffectComponent removeOtherComponent = GetOrAddComponent<RemoveOtherGameplayEffectComponent>();
-
-				while (removeOtherComponent.RemoveGameplayEffectsQueries.Count < 2)
-				{
-					removeOtherComponent.RemoveGameplayEffectsQueries.Add(new GameplayEffectQuery());
-				}
-
-				if (tagChanged)
-				{
-					removeOtherComponent.RemoveGameplayEffectsQueries[0] = GameplayEffectQuery.MakeQuery_MatchAllOwningTags(RemoveGameplayEffectWithTags.CombinedTags);
-				}
-
-				if (queryChanged)
-				{
-					removeOtherComponent.RemoveGameplayEffectsQueries[1] = RemoveGameplayEffectQuery;
-				}
-			}
-
-			{
-				RemoveOtherGameplayEffectComponent removeOtherComponent = GetComponent<RemoveOtherGameplayEffectComponent>();
-				if (removeOtherComponent != null && !removeOtherComponent.RemoveGameplayEffectsQueries.IsEmpty())
-				{
-					RemoveGameplayEffectQuery = removeOtherComponent.RemoveGameplayEffectsQueries.Last();
-				}
+				attribute_array.Add(new GameplayEffectAttributeCaptureSpec(capture_definition));
 			}
 		}
 
-		private void ConvertTagRequirementsComponent()
+		public void RegisterLinkedAggregatorCallbacks(ActiveGameplayEffectHandle handle)
 		{
-			GameplayEffect archetype = AssetDatabase.LoadAssetAtPath<GameplayEffect>("Assets/GameplayEffects/GameplayEffect.asset");
-
-			bool changed = ApplicationTagRequirements != archetype.ApplicationTagRequirements;
-			if (changed)
+			foreach (GameplayEffectAttributeCaptureSpec captureSpec in SourceAttributes)
 			{
-				// TagRequirementsGameplayEffectComponent tagRequirementsComponent = GetOrAddComponent<TagRequirementsGameplayEffectComponent>();
-				// tagRequirementsComponent.SetAndApplyTagChanges(ApplicationTagRequirements);
+				captureSpec.RegisterLinkedAggregatorCallbacks(handle);
+			}
+
+			foreach (GameplayEffectAttributeCaptureSpec captureSpec in TargetAttributes)
+			{
+				captureSpec.RegisterLinkedAggregatorCallbacks(handle);
 			}
 		}
 
-		private void ConvertTargetTagsComponent()
+		public void UnregisterLinkedAggregatorCallbacks(ActiveGameplayEffectHandle handle)
 		{
-			GameplayEffect archetype = AssetDatabase.LoadAssetAtPath<GameplayEffect>("Assets/GameplayEffects/GameplayEffect.asset");
-
-			bool changed = InheritableOwnedTagsContainer.CombinedTags != archetype.InheritableOwnedTagsContainer.CombinedTags;
-			if (changed)
+			foreach (GameplayEffectAttributeCaptureSpec captureSpec in SourceAttributes)
 			{
-				TargetTagsGameplayEffectComponent targetTagsComponent = GetOrAddComponent<TargetTagsGameplayEffectComponent>();
-				targetTagsComponent.SetAndApplyTargetTagChanges(InheritableOwnedTagsContainer);
+				captureSpec.UnregisterLinkedAggregatorCallbacks(handle);
 			}
 
+			foreach (GameplayEffectAttributeCaptureSpec captureSpec in TargetAttributes)
 			{
-				TargetTagsGameplayEffectComponent targetTagsComponent = GetComponent<TargetTagsGameplayEffectComponent>();
-				if (targetTagsComponent != null)
-				{
-					InheritableOwnedTagsContainer = targetTagsComponent.ConfiguredTargetTagsChanges;
-					InheritableOwnedTagsContainer.UpdateInheritedTagProperties(archetype.InheritableOwnedTagsContainer);
-				}
+				captureSpec.UnregisterLinkedAggregatorCallbacks(handle);
 			}
 		}
 	}
@@ -562,6 +763,7 @@ namespace GameplayAbilities
 		public GameplayEffect Def;
 		public List<GameplayEffectModifiedAttribute> ModifiedAttributes = new();
 		public GameplayEffectAttributeCaptureSpecContainer CapturedRelevantAttributes = new();
+		public List<GameplayEffectSpecHandle> TargetEffectSpecs = new();
 		public float Duration;
 		public float Period;
 		public TagContainerAggregator CapturedSourceTags = new();
@@ -695,7 +897,7 @@ namespace GameplayAbilities
 
 		public void SetContext(GameplayEffectContextHandle newEffectContext, bool skipRecaptureSourceActorTags = false)
 		{
-			var wasAlreadyInit = EffectContext.IsValid();
+			var wasAlreadyInit = EffectContext.IsValid;
 			EffectContext = newEffectContext;
 			if (wasAlreadyInit)
 			{
@@ -922,467 +1124,6 @@ namespace GameplayAbilities
 		}
 	}
 
-	[Serializable]
-	public class InheritedTagContainer
-	{
-#if ODIN_INSPECTOR
-		[ReadOnly]
-#endif
-		public GameplayTagContainer CombinedTags = new();
-
-		public GameplayTagContainer Added = new();
-
-		public GameplayTagContainer Removed = new();
-
-		public void UpdateInheritedTagProperties(in InheritedTagContainer parent)
-		{
-			CombinedTags.Reset();
-
-			if (parent is not null)
-			{
-				foreach (GameplayTag tag in parent.CombinedTags)
-				{
-					if (!tag.MatchesAny(Removed))
-					{
-						CombinedTags.AddTag(tag);
-					}
-				}
-			}
-
-			foreach (GameplayTag tag in Added)
-			{
-				if (!Removed.HasTagExact(tag))
-				{
-					CombinedTags.AddTag(tag);
-				}
-			}
-		}
-
-		public void ApplyTo(GameplayTagContainer applyToContainer)
-		{
-			if (applyToContainer.IsEmpty() && !CombinedTags.IsEmpty())
-			{
-				applyToContainer.CopyFrom(CombinedTags);
-			}
-			else
-			{
-				GameplayTagContainer removesThatApply = Removed.Filter(applyToContainer);
-				GameplayTagContainer removeOverridesAdd = Added.FilterExact(Removed);
-				removesThatApply.AppendTags(removeOverridesAdd);
-
-				applyToContainer.AppendTags(Added);
-				applyToContainer.RemoveTags(removesThatApply);
-			}
-		}
-
-		public void AddTag(in GameplayTag tagToAdd)
-		{
-			CombinedTags.AddTag(tagToAdd);
-		}
-
-		public void RemoveTag(in GameplayTag tagToRemove)
-		{
-			CombinedTags.RemoveTag(tagToRemove);
-		}
-
-		public static bool operator ==(InheritedTagContainer a, InheritedTagContainer b)
-		{
-			return a.CombinedTags == b.CombinedTags && a.Added == b.Added && a.Removed == b.Removed;
-		}
-
-		public static bool operator !=(InheritedTagContainer a, InheritedTagContainer b)
-		{
-			return !(a == b);
-		}
-	}
-
-	public class ModifierSpec
-	{
-		public float EvaluatedMagnitude;
-	}
-
-	public class GameplayEffectModifiedAttribute
-	{
-		public GameplayAttribute Attribute;
-		public float TotalMagnitude;
-	}
-
-
-	public class GameplayEffectAttributeCaptureSpec
-	{
-		public GameplayEffectAttributeCaptureDefinition BackingDefinition;
-		public Aggregator AttributeAggregator;
-
-		public GameplayEffectAttributeCaptureSpec(GameplayEffectAttributeCaptureDefinition definition)
-		{
-			BackingDefinition = definition;
-			AttributeAggregator = new Aggregator();
-		}
-
-		public bool HasValidCapture()
-		{
-			return AttributeAggregator is not null;
-		}
-
-		public bool AttemptCalculateAttributeBaseValue(ref float base_value)
-		{
-			if (AttributeAggregator is not null)
-			{
-				base_value = AttributeAggregator.BaseValue;
-				return true;
-			}
-			return false;
-		}
-
-		public bool AttemptCalculateAttributeMagnitude(AggregatorEvaluateParameters eval_params, ref float magnitude)
-		{
-			if (AttributeAggregator is not null)
-			{
-				magnitude = AttributeAggregator.Evaluate(eval_params);
-				return true;
-			}
-			return false;
-		}
-
-		public bool AttemptCalculateAttributeBonusMagnitude(AggregatorEvaluateParameters eval_params, ref float magnitude)
-		{
-			if (AttributeAggregator is not null)
-			{
-				magnitude = AttributeAggregator.EvaluateBonus(eval_params);
-				return true;
-			}
-			return false;
-		}
-
-		public bool ShouldRefreshLinkedAggregator(Aggregator changed_aggregator)
-		{
-			return BackingDefinition.Snapshot == false && (changed_aggregator is null || changed_aggregator == AttributeAggregator);
-		}
-
-		public void RegisterLinkedAggregatorCallbacks(ActiveGameplayEffectHandle handle)
-		{
-			if (BackingDefinition.Snapshot == false)
-			{
-				AttributeAggregator.AddDependent(handle);
-			}
-		}
-
-		public void UnregisterLinkedAggregatorCallbacks(ActiveGameplayEffectHandle handle)
-		{
-			AttributeAggregator.RemoveDependent(handle);
-		}
-
-		public bool AttemptAddAggregatorModsToAggregator(Aggregator aggregatorToAddTo)
-		{
-			aggregatorToAddTo.AddModsFrom(AttributeAggregator);
-			return true;
-		}
-	}
-
-	public struct SetByCallerFloat
-	{
-		public string DataName;
-		public GameplayTag DataTag;
-	}
-
-	public class CustomCalculationBasedFloat
-	{
-		public GameplayModMagnitudeCalculation CalculationClassMagnitude;
-		public ScalableFloat Coefficient;
-		public ScalableFloat PreMultiplyAdditiveValue;
-		public ScalableFloat PostMultiplyAdditiveValue;
-
-		public float CalculateMagnitude(in GameplayEffectSpec relevantSpec)
-		{
-			float magnitude = 0;
-			// CalculationClassMagnitude.CalculateMagnitude(relevantSpec, out magnitude);
-			return magnitude;
-		}
-
-		public static bool operator ==(CustomCalculationBasedFloat a, CustomCalculationBasedFloat b)
-		{
-			return a.CalculationClassMagnitude == b.CalculationClassMagnitude && a.Coefficient == b.Coefficient && a.PreMultiplyAdditiveValue == b.PreMultiplyAdditiveValue && a.PostMultiplyAdditiveValue == b.PostMultiplyAdditiveValue;
-		}
-
-		public static bool operator !=(CustomCalculationBasedFloat a, CustomCalculationBasedFloat b)
-		{
-			return !(a == b);
-		}
-	}
-
-	[Serializable]
-	public class GameplayEffectModifierMagnitude
-	{
-		public GameplayEffectMagnitudeCalculation MagnitudeCalculationType;
-
-#if ODIN_INSPECTOR
-		[ShowIf("MagnitudeCalculationType", GameplayEffectMagnitudeCalculation.ScalableFloat)]
-#endif
-		public ScalableFloat ScalableFloatMagnitude;
-
-#if ODIN_INSPECTOR
-		[ShowIf("MagnitudeCalculationType", GameplayEffectMagnitudeCalculation.AttributeBased)]
-#endif
-		public AttributeBasedFloat AttributeBasedMagnitude;
-
-#if ODIN_INSPECTOR
-		[ShowIf("MagnitudeCalculationType", GameplayEffectMagnitudeCalculation.CustomCalculationClass)]
-#endif
-		public CustomCalculationBasedFloat CustomMagnitude;
-
-#if ODIN_INSPECTOR
-		[ShowIf("MagnitudeCalculationType", GameplayEffectMagnitudeCalculation.SetByCaller)]
-#endif
-		public SetByCallerFloat SetByCallerMagnitude;
-
-		public GameplayEffectModifierMagnitude()
-		{
-			MagnitudeCalculationType = GameplayEffectMagnitudeCalculation.ScalableFloat;
-		}
-
-		public GameplayEffectModifierMagnitude(in ScalableFloat value)
-		{
-			MagnitudeCalculationType = GameplayEffectMagnitudeCalculation.ScalableFloat;
-			ScalableFloatMagnitude = value;
-		}
-
-		public GameplayEffectModifierMagnitude(in AttributeBasedFloat value)
-		{
-			MagnitudeCalculationType = GameplayEffectMagnitudeCalculation.AttributeBased;
-			AttributeBasedMagnitude = value;
-		}
-
-		public GameplayEffectModifierMagnitude(in SetByCallerFloat value)
-		{
-			MagnitudeCalculationType = GameplayEffectMagnitudeCalculation.SetByCaller;
-			SetByCallerMagnitude = value;
-		}
-
-		public static bool operator ==(GameplayEffectModifierMagnitude a, GameplayEffectModifierMagnitude b)
-		{
-			if (a.MagnitudeCalculationType != b.MagnitudeCalculationType)
-			{
-				return false;
-			}
-			if (a.MagnitudeCalculationType == GameplayEffectMagnitudeCalculation.ScalableFloat)
-			{
-				if (a.ScalableFloatMagnitude != b.ScalableFloatMagnitude)
-				{
-					return false;
-				}
-			}
-			if (a.MagnitudeCalculationType == GameplayEffectMagnitudeCalculation.AttributeBased)
-			{
-				if (a.AttributeBasedMagnitude != b.AttributeBasedMagnitude)
-				{
-					return false;
-				}
-			}
-			if (a.MagnitudeCalculationType == GameplayEffectMagnitudeCalculation.CustomCalculationClass)
-			{
-				if (a.CustomMagnitude != b.CustomMagnitude)
-				{
-					return false;
-				}
-			}
-			if (a.MagnitudeCalculationType == GameplayEffectMagnitudeCalculation.SetByCaller)
-			{
-				if (a.SetByCallerMagnitude.DataName != b.SetByCallerMagnitude.DataName)
-				{
-					return false;
-				}
-			}
-			return true;
-		}
-
-		public static bool operator !=(GameplayEffectModifierMagnitude a, GameplayEffectModifierMagnitude b)
-		{
-			return !(a == b);
-		}
-
-		public bool CanCalculateMagnitude(in GameplayEffectSpec relevant_spec)
-		{
-			List<GameplayEffectAttributeCaptureDefinition> req_capture_defs = new();
-			GetAttributeCaptureDefinitions(req_capture_defs);
-			return relevant_spec.HasValidCapturedAttributes(req_capture_defs);
-		}
-
-		public bool AttemptCalculateMagnitude(in GameplayEffectSpec relevantSpec, ref float calculatedMagnitude, bool warnIfSetByCallerFail = true, float defaultSetByCaller = 0)
-		{
-			bool canCalc = CanCalculateMagnitude(relevantSpec);
-			if (canCalc)
-			{
-				switch (MagnitudeCalculationType)
-				{
-					case GameplayEffectMagnitudeCalculation.ScalableFloat:
-						calculatedMagnitude = ScalableFloatMagnitude.GetValueAtLevel(relevantSpec.Level);
-						break;
-					case GameplayEffectMagnitudeCalculation.AttributeBased:
-						calculatedMagnitude = AttributeBasedMagnitude.CalculateMagnitude(relevantSpec);
-						break;
-					case GameplayEffectMagnitudeCalculation.CustomCalculationClass:
-						calculatedMagnitude = CustomMagnitude.CalculateMagnitude(relevantSpec);
-						break;
-					case GameplayEffectMagnitudeCalculation.SetByCaller:
-						if (SetByCallerMagnitude.DataTag.IsValid())
-						{
-							calculatedMagnitude = relevantSpec.GetSetByCallerMagnitude(SetByCallerMagnitude.DataTag, warnIfSetByCallerFail, defaultSetByCaller);
-						}
-						else
-						{
-							calculatedMagnitude = relevantSpec.GetSetByCallerMagnitude(SetByCallerMagnitude.DataName, warnIfSetByCallerFail, defaultSetByCaller);
-						}
-						break;
-					default:
-						Debug.LogError($"Unknown MagnitudeCalculationType {MagnitudeCalculationType} in AttemptCalculateMagnitude");
-						calculatedMagnitude = 0;
-						break;
-				}
-			}
-			else
-			{
-				calculatedMagnitude = 0;
-			}
-
-			return canCalc;
-		}
-
-		public bool AttemptRecalculateMagnitudeFromDependentAggregatorChange(in GameplayEffectSpec relevantSpec, ref float calculatedMagnitude, in Aggregator changedAggregator)
-		{
-			List<GameplayEffectAttributeCaptureDefinition> reqCaptureDefs = new();
-
-			GetAttributeCaptureDefinitions(reqCaptureDefs);
-
-			foreach (GameplayEffectAttributeCaptureDefinition captureDef in reqCaptureDefs)
-			{
-				if (captureDef.Snapshot == false)
-				{
-					GameplayEffectAttributeCaptureSpec captureSpec = relevantSpec.CapturedRelevantAttributes.FindCaptureSpecByDefinition(captureDef, true);
-					if (captureSpec != null && captureSpec.ShouldRefreshLinkedAggregator(changedAggregator))
-					{
-						return AttemptCalculateMagnitude(relevantSpec, ref calculatedMagnitude);
-					}
-				}
-			}
-
-			return false;
-		}
-
-		public void GetAttributeCaptureDefinitions(List<GameplayEffectAttributeCaptureDefinition> capture_defs)
-		{
-			capture_defs.Clear();
-			switch (MagnitudeCalculationType)
-			{
-				case GameplayEffectMagnitudeCalculation.AttributeBased:
-					capture_defs.Add(AttributeBasedMagnitude.BackingAttribute);
-					break;
-			}
-		}
-	}
-
-	public class GameplayEffectAttributeCaptureSpecContainer
-	{
-		public List<GameplayEffectAttributeCaptureSpec> SourceAttributes = new();
-		public List<GameplayEffectAttributeCaptureSpec> TargetAttributes = new();
-
-		public GameplayEffectAttributeCaptureSpec FindCaptureSpecByDefinition(GameplayEffectAttributeCaptureDefinition definition, bool only_include_valid_capture)
-		{
-			bool source_attribute = definition.AttributeSource == GameplayEffectAttributeCaptureSource.Source;
-			List<GameplayEffectAttributeCaptureSpec> attribute_array = source_attribute ? SourceAttributes : TargetAttributes;
-
-			GameplayEffectAttributeCaptureSpec matching_spec = attribute_array.Find((element) => element.BackingDefinition == definition);
-
-			if (matching_spec is not null && only_include_valid_capture && !matching_spec.HasValidCapture())
-			{
-				matching_spec = null;
-			}
-
-			return matching_spec;
-		}
-
-		public bool HasValidCapturedAttributes(in List<GameplayEffectAttributeCaptureDefinition> capture_defs_to_check)
-		{
-			bool has_valid = true;
-
-			foreach (GameplayEffectAttributeCaptureDefinition cur_def in capture_defs_to_check)
-			{
-				GameplayEffectAttributeCaptureSpec capture_spec = FindCaptureSpecByDefinition(cur_def, true);
-				if (capture_spec is null)
-				{
-					has_valid = false;
-					break;
-				}
-			}
-
-			return has_valid;
-		}
-
-		public void CaptureAttributes(AbilitySystemComponent ability_system_component, GameplayEffectAttributeCaptureSource capture_source)
-		{
-			if (ability_system_component != null)
-			{
-				bool source_component = capture_source == GameplayEffectAttributeCaptureSource.Source;
-				List<GameplayEffectAttributeCaptureSpec> attribute_array = source_component ? SourceAttributes : TargetAttributes;
-				foreach (GameplayEffectAttributeCaptureSpec cur_capture_spec in attribute_array)
-				{
-					ability_system_component.CaptureAttributeForGameplayEffect(cur_capture_spec);
-				}
-			}
-		}
-
-		public void AddCaptureDefinition(GameplayEffectAttributeCaptureDefinition capture_definition)
-		{
-			bool source_attribute = capture_definition.AttributeSource == GameplayEffectAttributeCaptureSource.Source;
-			List<GameplayEffectAttributeCaptureSpec> attribute_array = source_attribute ? SourceAttributes : TargetAttributes;
-			if (!attribute_array.Exists((element) => element.BackingDefinition == capture_definition))
-			{
-				attribute_array.Add(new GameplayEffectAttributeCaptureSpec(capture_definition));
-			}
-		}
-
-		public void RegisterLinkedAggregatorCallbacks(ActiveGameplayEffectHandle handle)
-		{
-			foreach (GameplayEffectAttributeCaptureSpec captureSpec in SourceAttributes)
-			{
-				captureSpec.RegisterLinkedAggregatorCallbacks(handle);
-			}
-
-			foreach (GameplayEffectAttributeCaptureSpec captureSpec in TargetAttributes)
-			{
-				captureSpec.RegisterLinkedAggregatorCallbacks(handle);
-			}
-		}
-
-		public void UnregisterLinkedAggregatorCallbacks(ActiveGameplayEffectHandle handle)
-		{
-			foreach (GameplayEffectAttributeCaptureSpec captureSpec in SourceAttributes)
-			{
-				captureSpec.UnregisterLinkedAggregatorCallbacks(handle);
-			}
-
-			foreach (GameplayEffectAttributeCaptureSpec captureSpec in TargetAttributes)
-			{
-				captureSpec.UnregisterLinkedAggregatorCallbacks(handle);
-			}
-		}
-	}
-
-	public delegate void OnGivenActiveGameplayEffectRemoved(in ActiveGameplayEffect effect);
-
-	public delegate void OnActiveGameplayEffectRemoved_Info(GameplayEffectRemovalInfo removalInfo);
-	public delegate void OnActiveGameplayEffectStackChange(ActiveGameplayEffectHandle handle, int newStackCount, int previousStackCount);
-	public delegate void OnActiveGameplayEffectTimeChange(ActiveGameplayEffectHandle handle, float newStartTime, float newDuration);
-	public delegate void OnActiveGameplayEffectInhibitionChanged(ActiveGameplayEffectHandle handle, bool isInhibited);
-
-	public class ActiveGameplayEffectEvents
-	{
-		public OnActiveGameplayEffectRemoved_Info OnEffectRemoved;
-		public OnActiveGameplayEffectStackChange OnStackChanged;
-		public OnActiveGameplayEffectTimeChange OnTimeChanged;
-		public OnActiveGameplayEffectInhibitionChanged OnInhibitionChanged;
-	}
-
-
 	public class ActiveGameplayEffect
 	{
 		public ActiveGameplayEffectHandle Handle;
@@ -1393,42 +1134,23 @@ namespace GameplayAbilities
 		public bool IsPendingRemove;
 		public TimerHandle PeriodHandle;
 		public TimerHandle DurationHandle;
-
 		public ActiveGameplayEffectEvents EventSet = new();
 
-		public float GetTimeRemaining(float worldTime)
-		{
-			return Duration == GameplayEffectConstants.InfiniteDuration ? -1 : Duration - (worldTime - StartWorldTime);
-		}
+		public float Duration => Spec.Duration;
 
-		public float Duration
-		{
-			get
-			{
-				return Spec.Duration;
-			}
-		}
+		public float Period => Spec.Period;
 
-		public float Period
-		{
-			get
-			{
-				return Spec.Period;
-			}
-		}
-
-		public float EndTime
-		{
-			get
-			{
-				return Duration == GameplayEffectConstants.InfiniteDuration ? -1 : Duration + StartWorldTime;
-			}
-		}
+		public float EndTime => Duration == GameplayEffectConstants.InfiniteDuration ? -1 : Duration + StartWorldTime;
 
 		public ActiveGameplayEffect(ActiveGameplayEffectHandle handle, in GameplayEffectSpec spec)
 		{
 			Handle = handle;
 			Spec = spec;
+		}
+
+		public float GetTimeRemaining(float worldTime)
+		{
+			return Duration == GameplayEffectConstants.InfiniteDuration ? -1 : Duration - (worldTime - StartWorldTime);
 		}
 	}
 
@@ -1651,16 +1373,6 @@ namespace GameplayAbilities
 			};
 			return outQuery;
 		}
-	}
-
-	public delegate void OnGameplayAttributeChange(float newValue, in GameplayEffectModCallbackData modData);
-
-	public struct OnAttributeChangeData
-	{
-		public GameplayAttribute Attribute;
-		public float NewValue;
-		public float OldValue;
-		public GameplayEffectModCallbackData GEModData;
 	}
 
 	public delegate void OnGameplayAttributeValueChange(in OnAttributeChangeData data);
@@ -2115,7 +1827,7 @@ namespace GameplayAbilities
 
 				GameplayEffectCustomExecutionParams executionParams = new GameplayEffectCustomExecutionParams();
 				GameplayEffectCustomExecutionOutput executionOutput = new GameplayEffectCustomExecutionOutput();
-				curExecDef.CalculationClass.Execute(executionParams, out executionOutput);
+				// curExecDef.CalculationClass.Execute(executionParams, out executionOutput);
 
 				runConditionalEffects = executionOutput.ShouldTriggerConditionalGameplayEffects;
 
@@ -2793,18 +2505,444 @@ namespace GameplayAbilities
 		}
 	}
 
-	public struct GameplayEffectRemovalInfo
+	[CreateAssetMenu(fileName = "GameplayEffect", menuName = "GameplayAbilities/GameplayEffect", order = 0)]
+	public class GameplayEffect : ScriptableObject
 	{
-		public bool PrematureRemoval;
-		public int StackCount;
-		public GameplayEffectContextHandle EffectContext;
-		public ActiveGameplayEffect ActiveEffect;
-	}
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Duration")]
+#endif
+		public GameplayEffectDurationType DurationPolicy;
 
-	public class GameplayEffectModCallbackData
-	{
-		public GameplayEffectSpec EffectSpec;
-		public GameplayModifierEvaluatedData EvaluatedData;
-		public AbilitySystemComponent Target;
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Duration")]
+		[ShowIf("DurationPolicy", GameplayEffectDurationType.HasDuration)]
+#endif
+		public GameplayEffectModifierMagnitude DurationMagnitude = new();
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Duration")]
+		[HideIf("DurationPolicy", GameplayEffectDurationType.Instant)]
+#endif
+		public ScalableFloat Period = new();
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Duration")]
+		[ShowIf("@Period.Value != 0")]
+#endif
+		public bool ExecutePeriodicEffectOnApplication = true;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Duration")]
+		[ShowIf("@Period.Value != 0")]
+#endif
+		public GameplayEffectPeriodInhibitionRemovedPolicy PeriodInhibitionPolicy;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+		[LabelText("Components")]
+		[ListDrawerSettings
+		(
+			CustomAddFunction = "AddComponentMenu",
+			CustomRemoveElementFunction = "RemoveComponent"
+		)]
+		[InlineEditor(InlineEditorObjectFieldModes.Foldout)]
+#endif
+		[SerializeReference]
+		public List<GameplayEffectComponent> GEComponents = new();
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+#endif
+		public List<GameplayModifierInfo> Modifiers = new();
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+#endif
+		public List<GameplayEffectExecutionDefinition> Executions = new();
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+		[LabelText("Gameplay Effect Asset Tags")]
+		[HideInInspector]
+		[Obsolete]
+#endif
+		public InheritedTagContainer InheritableGameplayEffectTags = new();
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+		[LabelText("Granted Tags")]
+		[HideInInspector]
+		[Obsolete]
+#endif
+		public InheritedTagContainer InheritableOwnedTagsContainer = new();
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+		[LabelText("Granted Blocked Ability Tags")]
+		[HideInInspector]
+		[Obsolete]
+#endif
+		public InheritedTagContainer InheritableBlockedAbilityTagsContainer;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+		[LabelText("Ongoing Tag Requirements")]
+		[HideInInspector]
+		[Obsolete]
+#endif
+		public GameplayTagRequirements OngoingTagRequirements;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+		[LabelText("Application Tag Requirements")]
+		[HideInInspector]
+		[Obsolete]
+#endif
+		public GameplayTagRequirements ApplicationTagRequirements;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+		[HideInInspector]
+		[Obsolete]
+#endif
+		public GameplayTagRequirements RemovalTagRequirements;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+		[HideInInspector]
+		[Obsolete]
+#endif
+		public InheritedTagContainer RemoveGameplayEffectWithTags;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+		[HideInInspector]
+		[Obsolete]
+#endif
+		public GameplayTagRequirements GrantedApplicationImmunityTags;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+		[HideInInspector]
+		[Obsolete]
+#endif
+		public GameplayEffectQuery GrantedApplicationImmunityQuery;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+		[HideInInspector]
+		[Obsolete]
+#endif
+		public bool HasGrantedApplicationImmunityTags;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("GameplayEffect")]
+		[HideInInspector]
+		[Obsolete]
+#endif
+		public GameplayEffectQuery RemoveGameplayEffectQuery;
+
+		[HideInInspector]
+		[Obsolete]
+		public bool HasRemoveGameplayEffectQuery;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Stacking")]
+#endif
+		public GameplayEffectStackingType StackingType;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Stacking")]
+		[HideIf("StackingType", GameplayEffectStackingType.None)]
+#endif
+		public int StackLimitCount;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Stacking")]
+		[HideIf("StackingType", GameplayEffectStackingType.None)]
+#endif
+		public GameplayEffectStackingDurationPolicy StackDurationRefreshPolicy;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Stacking")]
+		[HideIf("StackingType", GameplayEffectStackingType.None)]
+#endif
+		public GameplayEffectStackingPeriodPolicy StackPeriodResetPolicy;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Stacking")]
+		[HideIf("StackingType", GameplayEffectStackingType.None)]
+#endif
+		public GameplayEffectStackingExpirationPolicy StackExpirationPolicy;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Stacking")]
+		[HideIf("StackingType", GameplayEffectStackingType.None)]
+#endif
+		public List<GameplayEffect> OverflowEffects = new();
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Stacking")]
+#endif
+		public bool DenyOverflowApplication;
+
+#if ODIN_INSPECTOR
+		[FoldoutGroup("Stacking")]
+		[ShowIf("DenyOverflowApplication", true)]
+#endif
+		public bool ClearStackOnOverflow;
+
+		[HideInInspector]
+		public GameplayTagContainer CachedAssetTags = new();
+
+		[HideInInspector]
+		public GameplayTagContainer CachedGrantedTags = new();
+
+		[HideInInspector]
+		public GameplayTagContainer CachedBlockedAbilityTags = new();
+
+		public GameplayTagContainer AssetTags => CachedAssetTags;
+
+		public GameplayTagContainer GrantedTags => CachedGrantedTags;
+
+		public GameplayTagContainer BlockedAbilityTags => CachedBlockedAbilityTags;
+
+#if ODIN_INSPECTOR
+		protected virtual void OnValidate()
+		{
+			ConvertAssetTagsComponent();
+			ConvertRemoveOtherComponent();
+			ConvertTagRequirementsComponent();
+			ConvertTargetTagsComponent();
+		}
+
+		private void AddComponentMenu()
+		{
+			var menu = new GenericMenu();
+
+			// 获取所有GameplayEffectComponent的子类
+			var componentTypes = TypeCache.GetTypesDerivedFrom<GameplayEffectComponent>();
+			foreach (var type in componentTypes)
+			{
+				if (!type.IsAbstract)
+				{
+					menu.AddItem(new GUIContent(type.Name), false, () =>
+					{
+						var component = GameplayEffectComponent.CreateInstance(type, this);
+						GEComponents.Add(component);
+
+						// 如果这是一个Asset，确保将组件设置为子资源
+						if (this != null)
+						{
+							AssetDatabase.AddObjectToAsset(component, this);
+							EditorUtility.SetDirty(this);
+							AssetDatabase.SaveAssets();
+						}
+					});
+				}
+			}
+
+			menu.ShowAsContext();
+		}
+
+		private void RemoveComponent(GameplayEffectComponent component)
+		{
+			if (component != null)
+			{
+				// 从列表中移除
+				GEComponents.Remove(component);
+
+				// 如果这是一个Asset，删除子资源
+				if (this != null)
+				{
+					// 确保在编辑器模式下
+#if UNITY_EDITOR
+					// 从资源文件中删除组件
+					UnityEditor.AssetDatabase.RemoveObjectFromAsset(component);
+					// 销毁组件对象
+					UnityEditor.Undo.DestroyObjectImmediate(component);
+					// 标记资源已修改
+					UnityEditor.EditorUtility.SetDirty(this);
+					// 保存更改
+					UnityEditor.AssetDatabase.SaveAssets();
+#endif
+				}
+			}
+		}
+#endif
+
+		public void OnGameplayEffectChanged()
+		{
+			CachedAssetTags.Reset();
+			CachedGrantedTags.Reset();
+			CachedBlockedAbilityTags.Reset();
+
+			foreach (GameplayEffectComponent GEComponent in GEComponents)
+			{
+				if (GEComponent != null)
+				{
+					GEComponent.OnGameplayEffectChanged();
+				}
+			}
+		}
+
+		public bool CanApply(in ActiveGameplayEffectsContainer active_ge_container, in GameplayEffectSpec ge_spec)
+		{
+			foreach (var ge_component in GEComponents)
+			{
+				if (!ge_component.CanGameplayEffectApply(active_ge_container, ge_spec))
+				{
+					return false;
+				}
+			}
+			return true;
+		}
+
+		public bool OnAddedToActiveContainer(ActiveGameplayEffectsContainer active_ge_container, ActiveGameplayEffect active_ge)
+		{
+			var should_be_active = true;
+			foreach (var ge_component in GEComponents)
+			{
+				should_be_active = ge_component.OnActiveGameplayEffectAdded(active_ge_container, active_ge);
+			}
+			return should_be_active;
+		}
+
+		public void OnExecuted(ActiveGameplayEffectsContainer active_ge_container, GameplayEffectSpec ge_spec)
+		{
+			foreach (var ge_component in GEComponents)
+			{
+				ge_component.OnGameplayEffectExecuted(active_ge_container, ge_spec);
+			}
+		}
+
+		public void OnApplied(ActiveGameplayEffectsContainer active_ge_container, GameplayEffectSpec ge_spec)
+		{
+			foreach (var ge_component in GEComponents)
+			{
+				ge_component.OnGameplayEffectApplied(active_ge_container, ge_spec);
+			}
+		}
+
+		public T GetComponent<T>() where T : GameplayEffectComponent
+		{
+			foreach (var GEComponent in GEComponents)
+			{
+				if (GEComponent is T component)
+				{
+					return component;
+				}
+			}
+			return null;
+		}
+
+		public T AddComponent<T>() where T : GameplayEffectComponent, new()
+		{
+			var component = new T();
+			GEComponents.Add(component);
+			return component;
+		}
+
+		public T GetOrAddComponent<T>() where T : GameplayEffectComponent, new()
+		{
+			var component = GetComponent<T>();
+			if (component == null)
+			{
+				component = new T();
+				GEComponents.Add(component);
+			}
+			return component;
+		}
+
+		private void ConvertAssetTagsComponent()
+		{
+			GameplayEffect archetype = this;
+
+			bool changed = InheritableGameplayEffectTags.CombinedTags != archetype.InheritableGameplayEffectTags.CombinedTags;
+			if (changed)
+			{
+				AssetTagsGameplayEffectComponent assetTagsComponent = GetOrAddComponent<AssetTagsGameplayEffectComponent>();
+				assetTagsComponent.SetAndApplyAssetTagChanges(InheritableGameplayEffectTags);
+			}
+
+			{
+				AssetTagsGameplayEffectComponent assetTagsComponent = GetComponent<AssetTagsGameplayEffectComponent>();
+				if (assetTagsComponent != null)
+				{
+					InheritableGameplayEffectTags = assetTagsComponent.ConfiguredAssetTags;
+					InheritableGameplayEffectTags.UpdateInheritedTagProperties(archetype.InheritableGameplayEffectTags);
+				}
+			}
+		}
+
+		private void ConvertRemoveOtherComponent()
+		{
+			GameplayEffect archetype = this;
+
+			bool tagChanged = RemoveGameplayEffectWithTags != archetype.RemoveGameplayEffectWithTags;
+			bool queryChanged = RemoveGameplayEffectQuery != archetype.RemoveGameplayEffectQuery;
+
+			bool changed = tagChanged || queryChanged;
+			if (changed)
+			{
+				RemoveOtherGameplayEffectComponent removeOtherComponent = GetOrAddComponent<RemoveOtherGameplayEffectComponent>();
+
+				while (removeOtherComponent.RemoveGameplayEffectsQueries.Count < 2)
+				{
+					removeOtherComponent.RemoveGameplayEffectsQueries.Add(new GameplayEffectQuery());
+				}
+
+				if (tagChanged)
+				{
+					removeOtherComponent.RemoveGameplayEffectsQueries[0] = GameplayEffectQuery.MakeQuery_MatchAllOwningTags(RemoveGameplayEffectWithTags.CombinedTags);
+				}
+
+				if (queryChanged)
+				{
+					removeOtherComponent.RemoveGameplayEffectsQueries[1] = RemoveGameplayEffectQuery;
+				}
+			}
+
+			{
+				RemoveOtherGameplayEffectComponent removeOtherComponent = GetComponent<RemoveOtherGameplayEffectComponent>();
+				if (removeOtherComponent != null && !removeOtherComponent.RemoveGameplayEffectsQueries.IsEmpty())
+				{
+					RemoveGameplayEffectQuery = removeOtherComponent.RemoveGameplayEffectsQueries.Last();
+				}
+			}
+		}
+
+		private void ConvertTagRequirementsComponent()
+		{
+			GameplayEffect archetype = this;
+
+			bool changed = ApplicationTagRequirements != archetype.ApplicationTagRequirements;
+			if (changed)
+			{
+				// TagRequirementsGameplayEffectComponent tagRequirementsComponent = GetOrAddComponent<TagRequirementsGameplayEffectComponent>();
+				// tagRequirementsComponent.SetAndApplyTagChanges(ApplicationTagRequirements);
+			}
+		}
+
+		private void ConvertTargetTagsComponent()
+		{
+			GameplayEffect archetype = this;
+
+			bool changed = InheritableOwnedTagsContainer.CombinedTags != archetype.InheritableOwnedTagsContainer.CombinedTags;
+			if (changed)
+			{
+				TargetTagsGameplayEffectComponent targetTagsComponent = GetOrAddComponent<TargetTagsGameplayEffectComponent>();
+				targetTagsComponent.SetAndApplyTargetTagChanges(InheritableOwnedTagsContainer);
+			}
+
+			{
+				TargetTagsGameplayEffectComponent targetTagsComponent = GetComponent<TargetTagsGameplayEffectComponent>();
+				if (targetTagsComponent != null)
+				{
+					InheritableOwnedTagsContainer = targetTagsComponent.ConfiguredTargetTagsChanges;
+					InheritableOwnedTagsContainer.UpdateInheritedTagProperties(archetype.InheritableOwnedTagsContainer);
+				}
+			}
+		}
 	}
 }

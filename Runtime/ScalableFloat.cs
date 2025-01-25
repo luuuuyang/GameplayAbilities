@@ -4,7 +4,7 @@ using UnityEngine;
 namespace GameplayAbilities
 {
 	[Serializable]
-	public class ScalableFloat
+	public struct ScalableFloat
 	{
 		public float Value;
 		public AnimationCurve AnimationCurve;
@@ -15,13 +15,13 @@ namespace GameplayAbilities
 			AnimationCurve = null;
 		}
 
-		public float GetValueAtLevel(float level)
+		public readonly float GetValueAtLevel(float level)
 		{
 			EvaluateCurveAtLevel(level, out float outFloat);
 			return outFloat;
 		}
 
-		public bool EvaluateCurveAtLevel(float level, out float outFloat)
+		public readonly bool EvaluateCurveAtLevel(float level, out float outFloat)
 		{
 			if (AnimationCurve != null && AnimationCurve.length > 0)
 			{

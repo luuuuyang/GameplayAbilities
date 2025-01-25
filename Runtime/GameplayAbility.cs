@@ -139,7 +139,7 @@ namespace GameplayAbilities
 		public bool CheckCooldown(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
 		{
 			var cooldown_tags = GetCooldownTags();
-			if (cooldown_tags.Num > 0)
+			if (cooldown_tags.Count > 0)
 			{
 				var ability_system_component = actor_info.AbilitySystemComponent;
 				if (ability_system_component != null && ability_system_component.HasAnyMatchingGameplayTags(cooldown_tags))

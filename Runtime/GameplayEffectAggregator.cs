@@ -1,9 +1,28 @@
 using GameplayTags;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace GameplayAbilities
 {
+	public static class AbilitySystemPrivate
+	{
+		public static float MultiplyMods(in List<AggregatorMod> mods)
+		{
+			float result = 1;
+
+			foreach (AggregatorMod mod in mods)
+			{
+				if (mod.Qualifies)
+				{
+					result *= mod.EvaluatedMagnitude;
+				}
+			}
+
+			return result;
+		}
+	}
+
 	public class AggregatorEvaluateParameters
 	{
 		public GameplayTagContainer SourceTags;
@@ -20,8 +39,8 @@ namespace GameplayAbilities
 		public float EvaluatedMagnitude;
 		public float StackCount;
 		public ActiveGameplayEffectHandle ActiveHandle;
-
 		public bool Qualifies => IsQualified;
+		private bool IsQualified;
 
 		public void UpdateQualifies(in AggregatorEvaluateParameters parameters)
 		{
@@ -31,12 +50,12 @@ namespace GameplayAbilities
 			bool sourceMet = SourceTagReqs is null || SourceTagReqs.RequirementsMet(srcTags);
 			bool targetMet = TargetTagReqs is null || TargetTagReqs.RequirementsMet(tgtTags);
 
-			bool sourceFilterMet = parameters.AppliedSourceTagFilter.Num == 0;
-			bool targetFilterMet = parameters.AppliedTargetTagFilter.Num == 0;
+			bool sourceFilterMet = parameters.AppliedSourceTagFilter.Count == 0;
+			bool targetFilterMet = parameters.AppliedTargetTagFilter.Count == 0;
 
 			if (ActiveHandle.IsValid())
 			{
-				foreach (var handleToIgnore in parameters.IgnoreHandles)
+				foreach (ActiveGameplayEffectHandle handleToIgnore in parameters.IgnoreHandles)
 				{
 					if (handleToIgnore == ActiveHandle)
 					{
@@ -64,23 +83,23 @@ namespace GameplayAbilities
 
 			IsQualified = sourceMet && targetMet && sourceFilterMet && targetFilterMet;
 		}
-
-		private bool IsQualified;
 	}
 
 	public class AggregatorModChannel
 	{
-		public Dictionary<GameplayModOp, List<AggregatorMod>> Mods = new()
+		public List<AggregatorMod>[] Mods = new List<AggregatorMod>[(int)GameplayModOp.Max];
+
+		public AggregatorModChannel()
 		{
-			{ GameplayModOp.Override, new() },
-			{ GameplayModOp.Additive, new() },
-			{ GameplayModOp.Multiply, new() },
-			{ GameplayModOp.Divide, new() }
-		};
+			for (int modOpIdx = 0; modOpIdx < Mods.Length; modOpIdx++)
+			{
+				Mods[modOpIdx] = new List<AggregatorMod>();
+			}
+		}
 
 		public float EvaluateWithBase(float inlineBaseValue, in AggregatorEvaluateParameters parameters)
 		{
-			foreach (AggregatorMod mod in Mods[GameplayModOp.Override])
+			foreach (AggregatorMod mod in Mods[(int)GameplayModOp.Override])
 			{
 				if (mod.Qualifies)
 				{
@@ -88,9 +107,11 @@ namespace GameplayAbilities
 				}
 			}
 
-			float additive = SumMods(Mods[GameplayModOp.Additive], GameplayEffectUtilities.GetModifierBiasByModifierOp(GameplayModOp.Additive), parameters);
-			float multiplicitive = SumMods(Mods[GameplayModOp.Multiply], GameplayEffectUtilities.GetModifierBiasByModifierOp(GameplayModOp.Multiply), parameters);
-			float division = SumMods(Mods[GameplayModOp.Divide], GameplayEffectUtilities.GetModifierBiasByModifierOp(GameplayModOp.Divide), parameters);
+			float additive = SumMods(Mods[(int)GameplayModOp.Additive], GameplayEffectUtilities.GetModifierBiasByModifierOp(GameplayModOp.Additive), parameters);
+			float multiplicitive = SumMods(Mods[(int)GameplayModOp.Multiplicitive], GameplayEffectUtilities.GetModifierBiasByModifierOp(GameplayModOp.Multiplicitive), parameters);
+			float division = SumMods(Mods[(int)GameplayModOp.Division], GameplayEffectUtilities.GetModifierBiasByModifierOp(GameplayModOp.Division), parameters);
+			float finalAdd = SumMods(Mods[(int)GameplayModOp.AddFinal], GameplayEffectUtilities.GetModifierBiasByModifierOp(GameplayModOp.AddFinal), parameters);
+			float compoundMultiply = AbilitySystemPrivate.MultiplyMods(Mods[(int)GameplayModOp.MultiplyCompound]);
 
 			if (Mathf.Approximately(division, 0))
 			{
@@ -98,12 +119,45 @@ namespace GameplayAbilities
 				division = 1;
 			}
 
-			return (inlineBaseValue + additive) * multiplicitive / division;
+			return (inlineBaseValue + additive) * multiplicitive / division * compoundMultiply + finalAdd;
+		}
+
+		public bool ReverseEvaluate(float finalValue, in AggregatorEvaluateParameters parameters, out float computedValue)
+		{
+			foreach (AggregatorMod mod in Mods[(int)GameplayModOp.Override])
+			{
+				if (mod.Qualifies)
+				{
+					computedValue = finalValue;
+					return false;
+				}
+			}
+
+			float additive = SumMods(Mods[(int)GameplayModOp.Additive], GameplayEffectUtilities.GetModifierBiasByModifierOp(GameplayModOp.Additive), parameters);
+			float multiplicitive = SumMods(Mods[(int)GameplayModOp.Multiplicitive], GameplayEffectUtilities.GetModifierBiasByModifierOp(GameplayModOp.Multiplicitive), parameters);
+			float division = SumMods(Mods[(int)GameplayModOp.Division], GameplayEffectUtilities.GetModifierBiasByModifierOp(GameplayModOp.Division), parameters);
+			float finalAdd = SumMods(Mods[(int)GameplayModOp.AddFinal], GameplayEffectUtilities.GetModifierBiasByModifierOp(GameplayModOp.AddFinal), parameters);
+			float compoundMultiply = AbilitySystemPrivate.MultiplyMods(Mods[(int)GameplayModOp.MultiplyCompound]);
+
+			if (Mathf.Approximately(division, 0))
+			{
+				Debug.LogWarning("Division summation was 0.0f in AggregatorModChannel.");
+				division = 1;
+			}
+
+			if (multiplicitive <= float.Epsilon)
+			{
+				computedValue = finalValue;
+				return false;
+			}
+
+			computedValue = (finalValue - finalAdd) / (compoundMultiply * division / multiplicitive) - additive;
+			return true;
 		}
 
 		public void AddMod(float evaluatedMagnitude, GameplayModOp modOp, in GameplayTagRequirements sourceTagReqs, in GameplayTagRequirements targetTagReqs, in ActiveGameplayEffectHandle activeHandle)
 		{
-			List<AggregatorMod> modList = Mods[modOp];
+			List<AggregatorMod> modList = Mods[(int)modOp];
 
 			AggregatorMod newMod = new()
 			{
@@ -119,15 +173,37 @@ namespace GameplayAbilities
 
 		public void RemoveModsWithActiveHandle(ActiveGameplayEffectHandle handle)
 		{
-			foreach (GameplayModOp modOp in Mods.Keys)
+			Debug.Assert(handle.IsValid());
+
+			for (int modOpIdx = 0; modOpIdx < Mods.Length; modOpIdx++)
 			{
-				Mods[modOp].RemoveAll(mod => mod.ActiveHandle == handle);
+				Mods[modOpIdx].RemoveAll(mod => mod.ActiveHandle == handle);
+			}
+		}
+
+		public void AddModsFrom(in AggregatorModChannel other)
+		{
+			for (int modOpIdx = 0; modOpIdx < Mods.Length; modOpIdx++)
+			{
+				Mods[modOpIdx].AddRange(other.Mods[modOpIdx]);
+			}
+		}
+
+		public void UpdateQualifiesOnAllMods(in AggregatorEvaluateParameters parameters)
+		{
+			for (int modOpIdx = 0; modOpIdx < Mods.Length; modOpIdx++)
+			{
+				foreach (AggregatorMod mod in Mods[modOpIdx])
+				{
+					mod.UpdateQualifies(parameters);
+				}
 			}
 		}
 
 		public static float SumMods(in List<AggregatorMod> mods, float bias, in AggregatorEvaluateParameters parameters)
 		{
 			float sum = bias;
+
 			foreach (AggregatorMod mod in mods)
 			{
 				if (mod.Qualifies)
@@ -135,26 +211,8 @@ namespace GameplayAbilities
 					sum += mod.EvaluatedMagnitude - bias;
 				}
 			}
+
 			return sum;
-		}
-
-		public void AddModsFrom(in AggregatorModChannel other)
-		{
-			foreach (GameplayModOp modOp in other.Mods.Keys)
-			{
-				Mods[modOp].AddRange(other.Mods[modOp]);
-			}
-		}
-
-		public void UpdateQualifiesOnAllMods(in AggregatorEvaluateParameters parameters)
-		{
-			foreach (GameplayModOp modOp in Mods.Keys)
-			{
-				foreach (AggregatorMod mod in Mods[modOp])
-				{
-					mod.UpdateQualifies(parameters);
-				}
-			}
 		}
 	}
 
@@ -185,24 +243,32 @@ namespace GameplayAbilities
 			return computedValue;
 		}
 
-		public void EvaluateQualificationForAllMods(in AggregatorEvaluateParameters parameters)
+		public float EvaluateWithBaseToChannel(float inlineBaseValue, in AggregatorEvaluateParameters parameters, GameplayModEvaluationChannel finalChannel)
 		{
+			float computedValue = inlineBaseValue;
+
 			foreach (var channelEntry in ModChannelsMap)
 			{
-				AggregatorModChannel curChannel = channelEntry.Value;
-				curChannel.UpdateQualifiesOnAllMods(parameters);
+				if (channelEntry.Key <= finalChannel)
+				{
+					var curChannel = channelEntry.Value;
+					computedValue = curChannel.EvaluateWithBase(computedValue, parameters);
+				}
+				else
+				{
+					break;
+				}
 			}
+
+			return computedValue;
 		}
 
-		public void AddModsFrom(in AggregatorModChannelContainer other)
+		public void EvaluateQualificationForAllMods(in AggregatorEvaluateParameters parameters)
 		{
-			foreach (var sourceChannelEntry in other.ModChannelsMap)
+			foreach (var mapIt in ModChannelsMap)
 			{
-				GameplayModEvaluationChannel sourceChannelEnum = sourceChannelEntry.Key;
-				AggregatorModChannel sourceChannel = sourceChannelEntry.Value;
-
-				AggregatorModChannel targetChannel = FindOrAddModChannel(sourceChannelEnum);
-				targetChannel.AddModsFrom(sourceChannel);
+				AggregatorModChannel channel = mapIt.Value;
+				channel.UpdateQualifiesOnAllMods(parameters);
 			}
 		}
 
@@ -215,6 +281,18 @@ namespace GameplayAbilities
 					AggregatorModChannel curChannel = channelEntry.Value;
 					curChannel.RemoveModsWithActiveHandle(activeHandle);
 				}
+			}
+		}
+
+		public void AddModsFrom(in AggregatorModChannelContainer other)
+		{
+			foreach (var sourceChannelEntry in other.ModChannelsMap)
+			{
+				GameplayModEvaluationChannel sourceChannelEnum = sourceChannelEntry.Key;
+				AggregatorModChannel sourceChannel = sourceChannelEntry.Value;
+
+				AggregatorModChannel targetChannel = FindOrAddModChannel(sourceChannelEnum);
+				targetChannel.AddModsFrom(sourceChannel);
 			}
 		}
 	}
@@ -237,30 +315,16 @@ namespace GameplayAbilities
 			BroadcastingDirtyCount = 0;
 		}
 
-		public static float StaticExecModOnBaseValue(float baseValue, GameplayModOp modifierOp, float evaluatedMagnitude)
-		{
-			switch (modifierOp)
-			{
-				case GameplayModOp.Override:
-					baseValue = evaluatedMagnitude;
-					break;
-				case GameplayModOp.Additive:
-					baseValue += evaluatedMagnitude;
-					break;
-				case GameplayModOp.Multiply:
-					baseValue *= evaluatedMagnitude;
-					break;
-				case GameplayModOp.Divide:
-					baseValue /= evaluatedMagnitude;
-					break;
-			}
-			return baseValue;
-		}
-
 		public float Evaluate(in AggregatorEvaluateParameters parameters)
 		{
 			EvaluateQualificationForAllMods(parameters);
 			return ModChannels.EvaluateWithBase(BaseValue, parameters);
+		}
+
+		public float EvaluateToChannel(in AggregatorEvaluateParameters parameters, GameplayModEvaluationChannel finalChannel)
+		{
+			EvaluateQualificationForAllMods(parameters);
+			return ModChannels.EvaluateWithBaseToChannel(BaseValue, parameters, finalChannel);
 		}
 
 		public float EvaluateWithBase(float inlineBaseValue, in AggregatorEvaluateParameters parameters)
@@ -279,17 +343,43 @@ namespace GameplayAbilities
 			ModChannels.EvaluateQualificationForAllMods(parameters);
 		}
 
+		public static float StaticExecModOnBaseValue(float baseValue, GameplayModOp modifierOp, float evaluatedMagnitude)
+		{
+			switch (modifierOp)
+			{
+				case GameplayModOp.Override:
+					baseValue = evaluatedMagnitude;
+					break;
+				case GameplayModOp.AddBase:
+				case GameplayModOp.AddFinal:
+					baseValue += evaluatedMagnitude;
+					break;
+				case GameplayModOp.MultiplyAdditive:
+				case GameplayModOp.MultiplyCompound:
+					baseValue *= evaluatedMagnitude;
+					break;
+				case GameplayModOp.DivideAdditive:
+					if (Mathf.Approximately(evaluatedMagnitude, 0) == false)
+					{
+						baseValue /= evaluatedMagnitude;
+					}
+					break;
+			}
+			return baseValue;
+		}
+
 		public void AddAggregatorMod(float evaluatedMagnitude, GameplayModOp modifierOp, GameplayModEvaluationChannel modifierChannel, in GameplayTagRequirements sourceTagReqs, in GameplayTagRequirements targetTagReqs, ActiveGameplayEffectHandle activeHandle)
 		{
 			AggregatorModChannel modChannelToAddTo = ModChannels.FindOrAddModChannel(modifierChannel);
 			modChannelToAddTo.AddMod(evaluatedMagnitude, modifierOp, sourceTagReqs, targetTagReqs, activeHandle);
-			
+
 			BroadcastOnDirty();
 		}
 
 		public void RemoveAggregatorMod(ActiveGameplayEffectHandle activeHandle)
 		{
 			ModChannels.RemoveAggregatorMod(activeHandle);
+
 			BroadcastOnDirty();
 		}
 
@@ -338,6 +428,8 @@ namespace GameplayAbilities
 			if (BroadcastingDirtyCount > MAX_BROADCAST_DIRTY)
 			{
 				OnDirtyRecursive?.Invoke(this);
+
+				Debug.LogWarning("Aggregator detected cyclic attribute dependencies. We are skipping a recursive dirty call. Its possible the resulting attribute values are not what you expect!");
 				return;
 			}
 
@@ -347,7 +439,7 @@ namespace GameplayAbilities
 			List<ActiveGameplayEffectHandle> dependantsLocalCopy = Dependents;
 			Dependents.Clear();
 
-			foreach (var handle in dependantsLocalCopy)
+			foreach (ActiveGameplayEffectHandle handle in dependantsLocalCopy)
 			{
 				AbilitySystemComponent asc = handle.OwningAbilitySystemComponent;
 				if (asc != null)

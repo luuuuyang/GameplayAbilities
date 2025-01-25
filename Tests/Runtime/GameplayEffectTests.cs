@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using System;
 using System.Collections;
 using System.Reflection;
 using UnityEngine;
@@ -25,18 +26,17 @@ namespace GameplayAbilities.Tests
             SourceComponent.InitStats(typeof(AbilitySystemTestAttributeSet));
             DestComponent.InitStats(typeof(AbilitySystemTestAttributeSet));
 
-            // 初始化属性值
             const float startingHealth = 100f;
             const float startingMana = 200f;
 
             SourceComponent.GetSet<AbilitySystemTestAttributeSet>().Health = startingHealth;
             SourceComponent.GetSet<AbilitySystemTestAttributeSet>().MaxHealth = startingHealth;
-            SourceComponent.GetSet<AbilitySystemTestAttributeSet>().Mana = startingMana;
+            SourceComponent.GetSet<AbilitySystemTestAttributeSet>().Mana = new GameplayAttributeData(startingMana);
             SourceComponent.GetSet<AbilitySystemTestAttributeSet>().MaxMana = startingMana;
 
             DestComponent.GetSet<AbilitySystemTestAttributeSet>().Health = startingHealth;
             DestComponent.GetSet<AbilitySystemTestAttributeSet>().MaxHealth = startingHealth;
-            DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana = startingMana;
+            DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana = new GameplayAttributeData(startingMana);
             DestComponent.GetSet<AbilitySystemTestAttributeSet>().MaxMana = startingMana;
         }
 
@@ -82,7 +82,7 @@ namespace GameplayAbilities.Tests
         public void Test_ManaBuff()
         {
             const float buffValue = 30f;
-            float startingMana = DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana;
+            float startingMana = DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana.CurrentValue;
 
             ActiveGameplayEffectHandle buffHandle;
 
@@ -92,11 +92,73 @@ namespace GameplayAbilities.Tests
 
             buffHandle = SourceComponent.ApplyGameplayEffectToTarget(damageBuffEffect, DestComponent, 1);
 
-            Assert.AreEqual(startingMana + buffValue, DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana, "Mana Buffed");
+            Assert.AreEqual(startingMana + buffValue, DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana.CurrentValue, "Mana Buffed");
 
             DestComponent.RemoveActiveGameplayEffect(buffHandle);
 
-            Assert.AreEqual(startingMana, DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana, "Mana Restored");
+            Assert.AreEqual(startingMana, DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana.CurrentValue, "Mana Restored");
+        }
+
+        [Test]
+        public void Test_AttributeAggregators()
+        {
+            const float buffValue = 2f;
+            float manaBaseValue = DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana.BaseValue;
+
+            ActiveGameplayEffectHandle ApplyGameplayModOp(GameplayModOp gameplayModOp)
+            {
+                GameplayEffect damageBuffEffect = ScriptableObject.CreateInstance<GameplayEffect>();
+                AddModifier(damageBuffEffect, typeof(AbilitySystemTestAttributeSet).GetField("Mana"), gameplayModOp, buffValue);
+                damageBuffEffect.DurationPolicy = GameplayEffectDurationType.Infinite;
+
+                return SourceComponent.ApplyGameplayEffectToTarget(damageBuffEffect, DestComponent, 1);
+            }
+
+            ActiveGameplayEffectHandle TestGameplayModOp(GameplayModOp gameplayModOp)
+            {
+                float prevValue = DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana.CurrentValue;
+                float expectedValue = prevValue + Aggregator.StaticExecModOnBaseValue(prevValue, gameplayModOp, buffValue);
+
+                ActiveGameplayEffectHandle AGEHandle = ApplyGameplayModOp(gameplayModOp);
+                float currentValue = DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana.CurrentValue;
+                Assert.AreEqual(expectedValue, currentValue, $"Attribute GameplayModOp {gameplayModOp}");
+
+                return AGEHandle;
+            }
+
+            ActiveGameplayEffectHandle additiveHandle = TestGameplayModOp(GameplayModOp.Additive);
+            ActiveGameplayEffectHandle multiplicativeHandle = TestGameplayModOp(GameplayModOp.Multiplicitive);
+            ActiveGameplayEffectHandle divisionHandle = TestGameplayModOp(GameplayModOp.Division);
+            ActiveGameplayEffectHandle compoundHandle = TestGameplayModOp(GameplayModOp.MultiplyCompound);
+            ActiveGameplayEffectHandle finalAddHandle = TestGameplayModOp(GameplayModOp.AddFinal);
+
+            ActiveGameplayEffectHandle overrideHandle = TestGameplayModOp(GameplayModOp.Override);
+            DestComponent.RemoveActiveGameplayEffect(overrideHandle);
+
+            Assert.AreEqual(manaBaseValue, DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana.BaseValue, "Mana BaseValue is Unchanged");
+
+            ActiveGameplayEffectHandle baseAdd2 = TestGameplayModOp(GameplayModOp.Additive);
+            ActiveGameplayEffectHandle baseMultiply2 = TestGameplayModOp(GameplayModOp.Multiplicitive);
+            ActiveGameplayEffectHandle compound2 = TestGameplayModOp(GameplayModOp.MultiplyCompound);
+            ActiveGameplayEffectHandle finalAdd2 = TestGameplayModOp(GameplayModOp.AddFinal);
+
+            const float x = buffValue;
+            float expectedResult = ((manaBaseValue + x + x) * (1 + (x - 1) + (x - 1)) / (1 + (x - 1) * (x * x))) + x + x;
+            float currentValue = DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana.CurrentValue;
+            Assert.AreEqual(expectedResult, currentValue, "Aggregation Equation Works as Expected");
+
+            DestComponent.RemoveActiveGameplayEffect(finalAdd2);
+            DestComponent.RemoveActiveGameplayEffect(compound2);
+            DestComponent.RemoveActiveGameplayEffect(baseMultiply2);
+            DestComponent.RemoveActiveGameplayEffect(baseAdd2);
+
+            DestComponent.RemoveActiveGameplayEffect(finalAddHandle);
+            DestComponent.RemoveActiveGameplayEffect(compoundHandle);
+            DestComponent.RemoveActiveGameplayEffect(divisionHandle);
+            DestComponent.RemoveActiveGameplayEffect(multiplicativeHandle);
+            DestComponent.RemoveActiveGameplayEffect(additiveHandle);
+
+            Assert.AreEqual(manaBaseValue, DestComponent.GetSet<AbilitySystemTestAttributeSet>().Mana.CurrentValue, "Mana Restored to BaseValue");
         }
 
         [UnityTest]

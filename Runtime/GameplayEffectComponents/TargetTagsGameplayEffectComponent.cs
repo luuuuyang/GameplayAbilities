@@ -3,7 +3,6 @@ using UnityEngine;
 
 namespace GameplayAbilities
 {
-	[CreateAssetMenu(fileName = "TargetTagsGameplayEffectComponent", menuName = "GameplayAbilities/GameplayEffectComponents/TargetTagsGameplayEffectComponent")]
 	public class TargetTagsGameplayEffectComponent : GameplayEffectComponent
 	{
 		public InheritedTagContainer ConfiguredTargetTagsChanges => InheritableGrantedTagsContainer;

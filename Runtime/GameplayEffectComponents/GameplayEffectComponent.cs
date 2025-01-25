@@ -1,10 +1,11 @@
+using System;
 using UnityEngine;
 
 namespace GameplayAbilities
 {
-	[CreateAssetMenu(fileName = "GameplayEffectComponent", menuName = "GameplayAbilities/GameplayEffectComponent")]
-	public class GameplayEffectComponent : ScriptableObject
+	public abstract class GameplayEffectComponent : ScriptableObject
 	{
+		[HideInInspector]
 		public GameplayEffect Owner;
 
 		public virtual bool CanGameplayEffectApply(in ActiveGameplayEffectsContainer activeGEContainer, in GameplayEffectSpec GESpec)
@@ -28,5 +29,13 @@ namespace GameplayAbilities
 		public virtual void OnGameplayEffectChanged()
 		{
 		}
+
+		public static GameplayEffectComponent CreateInstance(Type type, GameplayEffect owner)
+        {
+            GameplayEffectComponent component = CreateInstance(type)  as GameplayEffectComponent;
+            component.Owner = owner;
+            component.name = type.Name;
+            return component;
+        }
 	}
 }

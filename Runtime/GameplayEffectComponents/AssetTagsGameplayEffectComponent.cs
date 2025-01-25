@@ -6,7 +6,6 @@ using Sirenix.OdinInspector;
 
 namespace GameplayAbilities
 {
-	[CreateAssetMenu(fileName = "AssetTagsGameplayEffectComponent", menuName = "GameplayAbilities/AssetTagsGameplayEffectComponent")]
 	public class AssetTagsGameplayEffectComponent : GameplayEffectComponent
 	{
 		public InheritedTagContainer ConfiguredAssetTags => InheritableAssetTags;

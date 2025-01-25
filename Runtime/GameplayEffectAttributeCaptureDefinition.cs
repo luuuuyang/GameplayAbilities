@@ -1,9 +1,18 @@
 using System;
 using System.Reflection;
+using UnityEngine;
+
+#if ODIN_INSPECTOR
+using Sirenix.OdinInspector;
+#endif
 
 namespace GameplayAbilities
 {
-	public enum GameplayEffectAttributeCaptureSource { Source, Target }
+	public enum GameplayEffectAttributeCaptureSource
+	{
+		Source,
+		Target
+	}
 
 	[Serializable]
 	public struct GameplayEffectAttributeCaptureDefinition

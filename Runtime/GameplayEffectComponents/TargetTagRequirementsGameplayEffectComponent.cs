@@ -5,7 +5,6 @@ using UnityEngine;
 
 namespace GameplayAbilities
 {
-	[CreateAssetMenu(fileName = "TargetTagRequirementsGameplayEffectComponent", menuName = "GameplayAbilities/GameplayEffectComponents/TargetTagRequirementsGameplayEffectComponent")]
 	public class TargetTagRequirementsGameplayEffectComponent : GameplayEffectComponent
 	{
 		public GameplayTagRequirements ApplicationTagRequirements;

@@ -3,7 +3,6 @@ using UnityEngine;
 
 namespace GameplayAbilities
 {
-	[CreateAssetMenu(fileName = "RemoveOtherGameplayEffectComponent", menuName = "GameplayAbilities/GameplayEffectComponents/RemoveOtherGameplayEffectComponent")]
 	public class RemoveOtherGameplayEffectComponent : GameplayEffectComponent
 	{
 		public List<GameplayEffectQuery> RemoveGameplayEffectsQueries = new();

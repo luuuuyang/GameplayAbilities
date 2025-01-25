@@ -7,6 +7,9 @@ using System.Reflection;
 
 namespace GameplayAbilities
 {
+	public delegate void ImmunityBlockGE(in GameplayEffectSpec blockedSpec, in ActiveGameplayEffect immunityGameplayEffect);
+	public delegate bool GameplayEffectApplicationQuery(in ActiveGameplayEffectsContainer activeGEContainer, in GameplayEffectSpec geSpecToConsider);
+
 	public class AbilitySystemComponent : MonoBehaviour
 	{
 		public delegate void OnGameplayEffectAppliedDelegate(AbilitySystemComponent instigator, in GameplayEffectSpec spec, ActiveGameplayEffectHandle handle);
@@ -19,6 +22,8 @@ namespace GameplayAbilities
 		public bool SuppressGrantAbility;
 		[HideInInspector]
 		public List<AttributeSet> SpawnedAttributes = new();
+		public List<GameplayEffectApplicationQuery> GameplayEffectApplicationQueries = new();
+		public ImmunityBlockGE OnImmunityBlockGameplayEffectDelegate;
 		public OnGameplayEffectAppliedDelegate OnGameplayEffectAppliedToSelfDelegate;
 		public OnGameplayEffectAppliedDelegate OnGameplayEffectAppliedToTargetDelegate;
 		public OnGameplayEffectAppliedDelegate OnActiveGameplayEffectAddedDelegateToSelf;
@@ -229,7 +234,7 @@ namespace GameplayAbilities
 
 		public ActiveGameplayEffectHandle ApplyGameplayEffectToTarget(GameplayEffect gameplayEffect, AbilitySystemComponent target, float level = GameplayEffectConstants.InvalidLevel, GameplayEffectContextHandle context = new())
 		{
-			if (!context.IsValid())
+			if (!context.IsValid)
 			{
 				context = MakeEffectContext();
 			}
@@ -361,7 +366,7 @@ namespace GameplayAbilities
 			else if (count_delta < 0)
 			{
 				List<GameplayTag> removed_tags = new();
-				removed_tags.Reserve(container.Num);
+				removed_tags.Reserve(container.Count);
 				List<DeferredTagChangeDelegate> deferred_tag_change_delegates = new();
 
 				foreach (GameplayTag tag in container)
@@ -434,7 +439,7 @@ namespace GameplayAbilities
 
 		public GameplayEffectSpecHandle MakeOutgoingSpec(GameplayEffect gameplayEffect, float level, GameplayEffectContextHandle context)
 		{
-			if (!context.IsValid())
+			if (!context.IsValid)
 			{
 				context = MakeEffectContext();
 			}

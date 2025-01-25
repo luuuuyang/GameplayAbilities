@@ -9,7 +9,7 @@ namespace GameplayAbilities.Tests
         public float MaxHealth;
         public float Health;
         public float MaxMana;
-        public float Mana;
+        public GameplayAttributeData Mana;
         public float Damage;
         public float SpellDamage;
         public float PhysicalDamage;

@@ -29,6 +29,7 @@ namespace GameplayAbilities
 	public class GameplayAttribute : ISerializationCallbackReceiver
 	{
 #if ODIN_INSPECTOR
+		[LabelText("Attribute")]
 		[ValueDropdown("CollectAttributeNamesFromAssembly")]
 #endif
 		public string AttributeName;
