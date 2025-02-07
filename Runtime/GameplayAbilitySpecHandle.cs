@@ -3,18 +3,17 @@ namespace GameplayAbilities
 	public struct GameplayAbilitySpecHandle
 	{
 		public int Handle;
+		private static int GHandle = 1;
 
 		public GameplayAbilitySpecHandle(int handle = GameplayEffectConstants.IndexNone)
 		{
 			Handle = handle;
 		}
 
-		public bool IsValid()
+		public readonly bool IsValid()
 		{
 			return Handle != GameplayEffectConstants.IndexNone;
 		}
-
-		private static int GHandle = 1;
 
 		public void GenerateNewHandle()
 		{

@@ -15,7 +15,7 @@ namespace GameplayAbilities
 
 		public ActiveGameplayEffectHandle(int handle)
 		{
-			this.Handle = handle;
+			Handle = handle;
 		}
 
 		public bool IsValid()

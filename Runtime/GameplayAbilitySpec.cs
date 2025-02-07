@@ -4,6 +4,7 @@ using System.Linq;
 
 namespace GameplayAbilities
 {
+	
 	public class GameplayAbilitySpec
 	{
 		public GameplayAbilitySpecHandle Handle;

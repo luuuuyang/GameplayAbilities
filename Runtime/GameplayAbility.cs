@@ -2,41 +2,25 @@ using GameplayTags;
 
 namespace GameplayAbilities
 {
-	public enum GameplayAbilityInstancingPolicy { NonInstanced, InstancedPerActor, InstancedPerExecution }
+	public delegate void OnGameplayAbilityCanceled();
+
+	public delegate void OnGameplayAbilityEnded(GameplayAbility ability);
 
 	public class GameplayAbility
 	{
-
-		public delegate void OnGameplayAbilityCanceled();
-
-		public delegate void OnGameplayAbilityEnded(GameplayAbility ability);
-
-		public delegate void GameplayAbilityEndedDelegate(AbilityEndedData data);
-
-
-		// GameplayTags that the GameplayAbility owns. These are just GameplayTags to describe the GameplayAbility.
-		public GameplayTagContainer AbilityTags;
-		// Other GameplayAbilities that have these GameplayTags in their Ability Tags will be canceled when this GameplayAbility is activated.
 		public GameplayTagContainer CancelAbilitiesWithTags;
-		// Other GameplayAbilities that have these GameplayTags in their Ability Tags are blocked from activating while this GameplayAbility is active.
 		public GameplayTagContainer BlockAbilitiesWithTags;
-		// These GameplayTags are given to the GameplayAbility's owner while this GameplayAbility is active. Remember these are not replicated.
 		public GameplayTagContainer ActivationOwnedTags;
-		// This GameplayAbility can only be activated if the owner has all of these GameplayTags.
 		public GameplayTagContainer ActivationRequiredTags;
-		// This GameplayAbility cannot be activated if the owner has any of these GameplayTags.
 		public GameplayTagContainer ActivationBlockedTags;
-		// This GameplayAbility can only be activated if the Source has all of these GameplayTags. The Source GameplayTags are only set if the GameplayAbility is triggered by an event.
 		public GameplayTagContainer SourceRequiredTags;
-		// This GameplayAbility cannot be activated if the Source has any of these GameplayTags. The Source GameplayTags are only set if the GameplayAbility is triggered by an event.
 		public GameplayTagContainer SourceBlockedTags;
-		// This GameplayAbility can only be activated if the Target has all of these GameplayTags. The Target GameplayTags are only set if the GameplayAbility is triggered by an event.
 		public GameplayTagContainer TargetRequiredTags;
-		// This GameplayAbility cannot be activated if the Target has any of these GameplayTags. The Target GameplayTags are only set if the GameplayAbility is triggered by an event.
 		public GameplayTagContainer TargetBlockedTags;
 
+		public GameplayTagContainer AbilityTags;
+
 		public GameplayAbilityInstancingPolicy InstancingPolicy;
-		// if true, and trying to activate an already active instanced ability, end it and re-trigger it.
 		public bool RetriggerInstancedAbility;
 
 		public GameplayEffect Cost;
@@ -65,11 +49,11 @@ namespace GameplayAbilities
 
 		public bool MarkPendingKillOnAbilityEnd;
 
-		public event OnGameplayAbilityCanceled GameplayAbilityCanceled;
-		public event OnGameplayAbilityEnded GameplayAbilityEnded;
+		public event OnGameplayAbilityCanceled OnGameplayAbilityCanceled;
+		public event OnGameplayAbilityEnded OnGameplayAbilityEnded;
 		public event GameplayAbilityEndedDelegate OnGameplayAbilityEndedWithData;
 
-		public bool CanActivateAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actor_info, in GameplayTagContainer source_tags, in GameplayTagContainer target_tags, out GameplayTagContainer optional_relevant_tags)
+		public virtual bool CanActivateAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actor_info, in GameplayTagContainer source_tags, in GameplayTagContainer target_tags, out GameplayTagContainer optional_relevant_tags)
 		{
 			optional_relevant_tags = new GameplayTagContainer();
 			return true;
@@ -98,7 +82,7 @@ namespace GameplayAbilities
 			comp.HandleChangeAbilityCanBeCanceled(AbilityTags, this, true);
 			comp.AddLooseGameplayTags(ActivationOwnedTags);
 
-			GameplayAbilityEnded += on_gameplay_ability_ended;
+			OnGameplayAbilityEnded += on_gameplay_ability_ended;
 
 			comp.NotifyAbilityActivated(handle, this);
 			comp.ApplyAbilityBlockAndCancelTags(AbilityTags, this, true, BlockAbilitiesWithTags, true, CancelAbilitiesWithTags);
@@ -181,11 +165,11 @@ namespace GameplayAbilities
 			return InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced ? true : IsCancelable;
 		}
 
-		public void CancelAbility(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
+		public virtual void CancelAbility(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
 		{
 			if (CanBeCanceled())
 			{
-				GameplayAbilityCanceled?.Invoke();
+				OnGameplayAbilityCanceled?.Invoke();
 				EndAbility(handle, actor_info, true);
 			}
 		}
@@ -199,8 +183,8 @@ namespace GameplayAbilities
 					IsAbilityEnding = true;
 				}
 
-				GameplayAbilityEnded?.Invoke(this);
-				GameplayAbilityEnded = null;
+				OnGameplayAbilityEnded?.Invoke(this);
+				OnGameplayAbilityEnded = null;
 
 				OnGameplayAbilityEndedWithData?.Invoke(new AbilityEndedData(this, handle, was_cancelled));
 				OnGameplayAbilityEndedWithData = null;

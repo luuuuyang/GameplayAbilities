@@ -4,8 +4,13 @@ using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Events;
 
+
 namespace GameplayAbilities
 {
+	using TimerFunction = Action;
+	using TimerDynamicDelegate = UnityAction;
+	public delegate void TimerDelegate();
+
 	public enum TimerStatus
 	{
 		Pending,
@@ -15,101 +20,78 @@ namespace GameplayAbilities
 		ActivePendingRemoval,
 	}
 
-	public delegate void TimerDelegate();
-
 	public struct TimerUnifiedDelegate
 	{
-		public TimerDelegate FuncDelegate;
-		public UnityAction FuncDynamicDelegate;
-		public Action FuncCallback;
+		public object VariantDelegate;
 
-		public void Execute()
+		public TimerUnifiedDelegate(in TimerDelegate d)
 		{
-			if (FuncDelegate != null)
+			VariantDelegate = d;
+		}
+
+		public TimerUnifiedDelegate(in TimerDynamicDelegate d)
+		{
+			VariantDelegate = d;
+		}
+
+		public TimerUnifiedDelegate(TimerFunction callback)
+		{
+			VariantDelegate = callback;
+		}
+
+		public readonly void Execute()
+		{
+			switch (VariantDelegate)
 			{
-				FuncDelegate.Invoke();
+				case TimerDelegate funcDelegate:
+					funcDelegate?.Invoke();
+					break;
+				case TimerDynamicDelegate funcDynDelegate:
+					funcDynDelegate?.Invoke();
+					break;
+				case TimerFunction timerFunction:
+					timerFunction?.Invoke();
+					break;
+				default:
+					break;
 			}
-			else if (FuncDynamicDelegate != null)
+		}
+
+		public readonly bool IsBound()
+		{
+			switch (VariantDelegate)
 			{
-				FuncDynamicDelegate.Invoke();
+				case TimerDelegate funcDelegate:
+					return funcDelegate.Target != null;
+				case TimerDynamicDelegate funcDynDelegate:
+					return funcDynDelegate.Target != null;
+				case TimerFunction timerFunction:
+					return timerFunction.Target != null;
+				default:
+					return false;
 			}
-			else if (FuncCallback != null)
+		}
+
+		public readonly object GetBoundObject()
+		{
+			switch (VariantDelegate)
 			{
-				FuncCallback();
+				case TimerDelegate funcDelegate:
+					return funcDelegate.Target;
+				case TimerDynamicDelegate funcDynDelegate:
+					return funcDynDelegate.Target;
+				case TimerFunction timerFunction:
+					return timerFunction.Target;
+				default:
+					return null;
 			}
-		}
-
-		public bool IsBound()
-		{
-			return FuncDelegate != null || FuncDynamicDelegate != null || FuncCallback != null;
-		}
-
-		public object GetBoundObject()
-		{
-			if (FuncDelegate != null)
-			{
-				return FuncDelegate.Target;
-			}
-			else if (FuncDynamicDelegate != null)
-			{
-				return FuncDynamicDelegate.Target;
-			}
-			return null;
-		}
-	}
-
-	public struct TimerHandle
-	{
-		private ulong Handle;
-		public const ushort IndexBits = 24;
-		public const ushort SerialNumberBits = 40;
-		public const int MaxIndex = 1 << IndexBits;
-		public const ulong MaxSerialNumber = 1 << SerialNumberBits;
-
-		public bool IsValid()
-		{
-			return Handle != 0;
-		}
-
-		public void Invalidate()
-		{
-			Handle = 0;
-		}
-
-		public void SetIndexAndSerialNumber(int index, ulong serialNumber)
-		{
-			Handle = (serialNumber << IndexBits) | (uint)index;
-		}
-
-		public int GetIndex()
-		{
-			return (int)(Handle & (MaxIndex - 1));
-		}
-
-		public ulong GetSerialNumber()
-		{
-			return Handle >> IndexBits;
-		}
-
-		public static bool operator ==(TimerHandle a, TimerHandle b)
-		{
-			return a.Handle == b.Handle;
-		}
-
-		public static bool operator !=(TimerHandle a, TimerHandle b)
-		{
-			return a.Handle != b.Handle;
-		}
-
-		public override int GetHashCode()
-		{
-			return Handle.GetHashCode();
 		}
 	}
 
 	public class TimerData
 	{
 		public bool Loop;
+		public bool MaxOncePerFrame;
 		public bool RequiresDelegate;
 		public TimerStatus Status;
 		public float Rate;
@@ -119,9 +101,23 @@ namespace GameplayAbilities
 		public object TimerIndicesByObjectKey;
 	}
 
+	public struct TimerManagerTimerParameters
+	{
+		public bool Loop;
+		public bool MaxOncePerFrame;
+		public float FirstDelay;
+
+		public TimerManagerTimerParameters(bool loop, bool maxOncePerFrame, float firstDelay = -1f)
+		{
+			Loop = loop;
+			MaxOncePerFrame = maxOncePerFrame;
+			FirstDelay = firstDelay;
+		}
+	};
+
 	public class TimerManager : SingletonMonoBehaviour<TimerManager>
 	{
-		private Dictionary<int, TimerData> Timers = new();
+		private SparseArray<TimerData> Timers = new();
 		private PriorityQueue<TimerHandle, double> ActiveTimerHeap = new();
 		private HashSet<TimerHandle> PausedTimerSet = new();
 		private HashSet<TimerHandle> PendingTimerSet = new();
@@ -130,45 +126,70 @@ namespace GameplayAbilities
 		private TimerHandle CurrentlyExecutingTimer;
 		private int LastTickedFrame;
 		private static ulong LastAssignedSerialNumber;
+		private static int GuaranteeEngineTickDelay = 0;
 
 		protected void Update()
 		{
+			if (Time.deltaTime > 0.1F)
+			{
+				Debug.LogWarning("Time.deltaTime is greater than 0.1, this is not expected behavior");
+			}
 			Tick(Time.deltaTime);
 		}
 
-		public void SetTimer(ref TimerHandle handle, TimerDelegate @delegate, float rate, bool loop, float firstDelay = -1)
+		public void SetTimer(ref TimerHandle handle, in TimerDelegate @delegate, float rate, bool loop, float firstDelay = -1)
 		{
-			InternalSetTimer(ref handle, new TimerUnifiedDelegate { FuncDelegate = @delegate }, rate, loop, firstDelay);
+			InternalSetTimer(ref handle, new TimerUnifiedDelegate(@delegate), rate, loop, firstDelay);
 		}
 
-		public void SetTimer(ref TimerHandle handle, UnityAction @delegate, float rate, bool loop, float firstDelay = -1)
+		public void SetTimer(ref TimerHandle handle, in TimerDynamicDelegate @delegate, float rate, bool loop, float firstDelay = -1)
 		{
-			InternalSetTimer(ref handle, new TimerUnifiedDelegate { FuncDynamicDelegate = @delegate }, rate, loop, firstDelay);
+			InternalSetTimer(ref handle, new TimerUnifiedDelegate(@delegate), rate, loop, firstDelay);
 		}
 
-		public void SetTimer(ref TimerHandle handle, Action @delegate, float rate, bool loop, float firstDelay = -1)
+		public void SetTimer(ref TimerHandle handle, in TimerFunction @delegate, float rate, bool loop, float firstDelay = -1)
 		{
-			InternalSetTimer(ref handle, new TimerUnifiedDelegate { FuncCallback = @delegate }, rate, loop, firstDelay);
+			InternalSetTimer(ref handle, new TimerUnifiedDelegate(@delegate), rate, loop, firstDelay);
 		}
 
 		public void SetTimer(ref TimerHandle handle, float rate, bool loop, float firstDelay = -1)
 		{
-			InternalSetTimer(ref handle, new TimerUnifiedDelegate { }, rate, loop, firstDelay);
+			InternalSetTimer(ref handle, new TimerUnifiedDelegate(), rate, loop, firstDelay);
+		}
+
+		public void SetTimer(ref TimerHandle handle, in TimerDelegate @delegate, float rate, in TimerManagerTimerParameters parameters)
+		{
+			InternalSetTimer(ref handle, new TimerUnifiedDelegate(@delegate), rate, parameters.Loop, parameters.FirstDelay);
+		}
+
+		public void SetTimer(ref TimerHandle handle, in TimerDynamicDelegate @delegate, float rate, in TimerManagerTimerParameters parameters)
+		{
+			InternalSetTimer(ref handle, new TimerUnifiedDelegate(@delegate), rate, parameters.Loop, parameters.FirstDelay);
+		}
+
+		public void SetTimer(ref TimerHandle handle, in TimerFunction @delegate, float rate, in TimerManagerTimerParameters parameters)
+		{
+			InternalSetTimer(ref handle, new TimerUnifiedDelegate(@delegate), rate, parameters.Loop, parameters.FirstDelay);
+		}
+
+		public void SetTimer(ref TimerHandle handle, float rate, in TimerManagerTimerParameters parameters)
+		{
+			InternalSetTimer(ref handle, new TimerUnifiedDelegate(), rate, parameters.Loop, parameters.FirstDelay);
 		}
 
 		public TimerHandle SetTimerForNextTick(in TimerDelegate @delegate)
 		{
-			return InternalSetTimerForNextTick(new TimerUnifiedDelegate { FuncDelegate = @delegate });
+			return InternalSetTimerForNextTick(new TimerUnifiedDelegate(@delegate));
 		}
 
-		public TimerHandle SetTimerForNextTick(UnityAction @delegate)
+		public TimerHandle SetTimerForNextTick(in TimerDynamicDelegate @delegate)
 		{
-			return InternalSetTimerForNextTick(new TimerUnifiedDelegate { FuncDynamicDelegate = @delegate });
+			return InternalSetTimerForNextTick(new TimerUnifiedDelegate(@delegate));
 		}
 
-		public TimerHandle SetTimerForNextTick(Action @delegate)
+		public TimerHandle SetTimerForNextTick(in TimerFunction @delegate)
 		{
-			return InternalSetTimerForNextTick(new TimerUnifiedDelegate { FuncCallback = @delegate });
+			return InternalSetTimerForNextTick(new TimerUnifiedDelegate(@delegate));
 		}
 
 		public void ClearTimer(TimerHandle handle)
@@ -196,18 +217,19 @@ namespace GameplayAbilities
 				case TimerStatus.ActivePendingRemoval:
 					break;
 				case TimerStatus.Active:
-					ActiveTimerHeap.Remove(handle, out var _, out var _);
+					bool removed = ActiveTimerHeap.Remove(handle, out var _, out var _);
+					Debug.Assert(removed);
 					break;
 				case TimerStatus.Pending:
-					PendingTimerSet.Remove(handle);
+					removed = PendingTimerSet.Remove(handle);
+					Debug.Assert(removed);
 					break;
 				case TimerStatus.Executing:
-					if (CurrentlyExecutingTimer == handle)
-					{
-						CurrentlyExecutingTimer.Invalidate();
-					}
+					Debug.Assert(CurrentlyExecutingTimer == handle);
+					CurrentlyExecutingTimer.Invalidate();
 					break;
 				default:
+					Debug.Assert(false);
 					break;
 			}
 
@@ -324,12 +346,12 @@ namespace GameplayAbilities
 
 					for (int callIdx = 0; callIdx < callCount; callIdx++)
 					{
-						Assert.IsTrue(!WillRemoveTimerAssert(CurrentlyExecutingTimer), "RemoveTimer (CurrentlyExecutingTimer) - due to fail before Execute()");
+						Debug.Assert(!WillRemoveTimerAssert(CurrentlyExecutingTimer), "RemoveTimer (CurrentlyExecutingTimer) - due to fail before Execute()");
 						top.TimerDelegate.Execute();
 
 						top = FindTimer(CurrentlyExecutingTimer);
-						Assert.IsTrue(top == null || !WillRemoveTimerAssert(CurrentlyExecutingTimer), "RemoveTimer (CurrentlyExecutingTimer) - due to fail after Execute()");
-						if (top == null || top.Status != TimerStatus.Executing)
+						Debug.Assert(top == null || !WillRemoveTimerAssert(CurrentlyExecutingTimer), "RemoveTimer (CurrentlyExecutingTimer) - due to fail after Execute()");
+						if (top == null || top.Status != TimerStatus.Executing || top.MaxOncePerFrame)
 						{
 							break;
 						}
@@ -406,10 +428,12 @@ namespace GameplayAbilities
 			}
 
 			int index = handle.GetIndex();
-			if (!Timers.TryGetValue(index, out TimerData timer))
+			if (!Timers.IsValidIndex(index))
 			{
 				return null;
 			}
+
+			TimerData timer = Timers[index];
 
 			if (timer.Handle != handle || timer.Status == TimerStatus.ActivePendingRemoval)
 			{
@@ -421,6 +445,11 @@ namespace GameplayAbilities
 
 		private void InternalSetTimer(ref TimerHandle handle, TimerUnifiedDelegate @delegate, float rate, bool loop, float firstDelay)
 		{
+			InternalSetTimer(ref handle, @delegate, rate, new TimerManagerTimerParameters(loop, false, firstDelay));
+		}
+
+		private void InternalSetTimer(ref TimerHandle handle, TimerUnifiedDelegate @delegate, float rate, in TimerManagerTimerParameters timerParameters)
+		{
 			if (FindTimer(handle) != null)
 			{
 				InternalClearTimer(handle);
@@ -431,16 +460,15 @@ namespace GameplayAbilities
 				TimerData newTimerData = new()
 				{
 					TimerDelegate = @delegate,
-
 					Rate = rate,
-					Loop = loop,
-
-					ExpireTime = firstDelay
+					Loop = timerParameters.Loop,
+					MaxOncePerFrame = timerParameters.MaxOncePerFrame,
+					RequiresDelegate = @delegate.IsBound(),
 				};
 
-				firstDelay = firstDelay >= 0 ? firstDelay : rate;
+				float firstDelay = timerParameters.FirstDelay >= 0 ? timerParameters.FirstDelay : rate;
 
-				TimerHandle newTimerHandle = new();
+				TimerHandle newTimerHandle;
 				if (HasBeenTickedThisFrame())
 				{
 					newTimerData.ExpireTime = InternalTime + firstDelay;
@@ -464,19 +492,35 @@ namespace GameplayAbilities
 			}
 		}
 
+		
+
 		private TimerHandle InternalSetTimerForNextTick(TimerUnifiedDelegate @delegate)
 		{
 			TimerData newTimerData = new()
 			{
 				Rate = 0,
 				Loop = false,
+				RequiresDelegate = true,
 				TimerDelegate = @delegate,
 				ExpireTime = InternalTime,
-				Status = TimerStatus.Active
 			};
 
-			TimerHandle newTimerHandle = AddTimer(newTimerData);
-			ActiveTimerHeap.Enqueue(newTimerHandle, newTimerData.ExpireTime);
+			bool queueForCurrentFrame = GuaranteeEngineTickDelay == 0 || HasBeenTickedThisFrame();
+
+			TimerHandle newTimerHandle;
+			if (queueForCurrentFrame)
+			{
+				newTimerData.Status = TimerStatus.Active;
+				newTimerHandle = AddTimer(newTimerData);
+				ActiveTimerHeap.Enqueue(newTimerHandle, newTimerData.ExpireTime);
+			}
+			else
+			{
+				newTimerData.Status = TimerStatus.Pending;
+				newTimerData.ExpireTime = 0;
+				newTimerHandle = AddTimer(newTimerData);
+				PendingTimerSet.Add(newTimerHandle);
+			}
 
 			return newTimerHandle;
 		}
@@ -489,7 +533,7 @@ namespace GameplayAbilities
 				case TimerStatus.Pending:
 					{
 						bool removed = PendingTimerSet.Remove(handle);
-						Assert.IsTrue(removed);
+						Debug.Assert(removed);
 						RemoveTimer(handle);
 					}
 					break;
@@ -501,17 +545,17 @@ namespace GameplayAbilities
 				case TimerStatus.Paused:
 					{
 						bool removed = PausedTimerSet.Remove(handle);
-						Assert.IsTrue(removed);
+						Debug.Assert(removed);
 						RemoveTimer(handle);
 					}
 					break;
 				case TimerStatus.Executing:
-					Assert.IsTrue(CurrentlyExecutingTimer == handle);
+					Debug.Assert(CurrentlyExecutingTimer == handle);
 					CurrentlyExecutingTimer.Invalidate();
 					RemoveTimer(handle);
 					break;
 				default:
-					Assert.IsTrue(false);
+					Debug.Assert(false);
 					break;
 			}
 		}
@@ -566,9 +610,8 @@ namespace GameplayAbilities
 			object timerIndicesByObjectKey = timerData.TimerDelegate.GetBoundObject();
 			timerData.TimerIndicesByObjectKey = timerIndicesByObjectKey;
 
-			int newIndex = Timers.Count;
-			Timers.Add(newIndex, timerData);
-
+			int newIndex = Timers.Add(timerData);
+			
 			TimerHandle result = GenerateHandle(newIndex);
 			Timers[newIndex].Handle = result;
 
@@ -609,7 +652,7 @@ namespace GameplayAbilities
 				}
 			}
 
-			Timers.Remove(handle.GetIndex());
+			Timers.RemoveAt(handle.GetIndex());
 		}
 
 		private void DescribeTimerDataSafely(in TimerData timerData)

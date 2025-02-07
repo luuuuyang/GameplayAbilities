@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Assertions;
 using System.Reflection;
+using System.Linq;
 
 namespace GameplayAbilities
 {
@@ -657,5 +658,84 @@ namespace GameplayAbilities
 			return ActiveGameplayEffects.GetGameplayEffectTargetTagsFromHandle(handle);
 		}
 
+		public GameplayAbilitySpecHandle GiveAbility(in GameplayAbilitySpec spec)
+		{
+			if (spec.Ability == null)
+			{
+				Debug.LogError("GiveAbility called with an invalid Ability Class.");
+				return new GameplayAbilitySpecHandle();
+			}
+
+			ActivatableAbilities.Items.Add(spec);
+			GameplayAbilitySpec ownedSpec = ActivatableAbilities.Items.Last();
+
+			if (ownedSpec.Ability.InstancingPolicy == GameplayAbilityInstancingPolicy.InstancedPerActor)
+			{
+
+			}
+
+			OnGiveAbility(ownedSpec);
+
+			Debug.Log($"{this.name}: GiveAbility {ownedSpec.Ability} [{ownedSpec.Handle}] Level: {ownedSpec.Level} Source: {ownedSpec.SourceObject.name}");
+			return ownedSpec.Handle;
+		}
+
+		public virtual void OnGiveAbility(GameplayAbilitySpec spec)
+		{
+
+		}
+
+		public void GetAllAbilities(List<GameplayAbilitySpecHandle> abilityHandles)
+		{
+			abilityHandles.Clear();
+
+			foreach (GameplayAbilitySpec spec in ActivatableAbilities.Items)
+			{
+				abilityHandles.Add(spec.Handle);
+			}
+		}
+
+		public List<GameplayAbilitySpec> GetActivatableAbilities()
+		{
+			return ActivatableAbilities.Items;
+		}
+
+		public bool TryActivateAbility(GameplayAbilitySpecHandle abilityToActivate)
+		{
+			GameplayAbilitySpec spec = FindAbilitySpecFromHandle(abilityToActivate);
+			
+			return false;
+		}
+
+		public void CancelAbilityHandle(in GameplayAbilitySpecHandle abilityHandle)
+		{
+
+		}
+
+		public void CancelAbilitySpec(GameplayAbilitySpec spec, GameplayAbility ignore)
+		{
+			GameplayAbilityActorInfo actorInfo = AbilityActorInfo;
+
+			if (spec.Ability.InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
+			{
+				List<GameplayAbility> abilitiesToCancel = spec.AbilityInstances;
+				foreach (GameplayAbility instanceAbility in abilitiesToCancel)
+				{
+					if (instanceAbility != null && instanceAbility != ignore)
+					{
+						instanceAbility.CancelAbility(spec.Handle, actorInfo);
+					}
+				}
+			}
+			else
+			{
+				spec.Ability.CancelAbility(spec.Handle, actorInfo);
+			}
+		}
+
+		public void SetUserAbilityActivationInhibited(bool newInhibit)
+		{
+
+		}
 	}
 }
