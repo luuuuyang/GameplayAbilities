@@ -1,3 +1,4 @@
+using GameplayTags;
 using UnityEngine;
 
 namespace GameplayAbilities
@@ -7,6 +8,13 @@ namespace GameplayAbilities
 		NonInstanced,
 		InstancedPerActor,
 		InstancedPerExecution
+	}
+
+	public enum GameplayAbilityTriggerSource
+	{
+		GameplayEvent,
+		OwnedTagAdded,
+		OwnedTagPresent
 	}
     
     public class GameplayAbilityActorInfo
@@ -25,9 +33,14 @@ namespace GameplayAbilities
 		}
 	}
 
-    public struct GameplayEventData
+    public class GameplayEventData
     {
-
+		public GameplayTag EventTag;
+		public object Instigator;
+		public object Target;
+		public GameplayTagContainer InstigatorTags;
+		public GameplayTagContainer TargetTags;
+		public float EventMagnitude;
     }
 
     public struct AbilityEndedData
@@ -44,6 +57,8 @@ namespace GameplayAbilities
 		}
 	}
 
-    public delegate void GameplayAbilityEndedDelegate(AbilityEndedData data);
+    public delegate void GameplayAbilityEndedDelegate(in AbilityEndedData data);
+
+	public delegate void GenericAbilityDelegate(GameplayAbility ability);
 
 }

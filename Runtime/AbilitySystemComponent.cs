@@ -8,10 +8,12 @@ using System.Linq;
 
 namespace GameplayAbilities
 {
+	public delegate void AbilityFailedDelegate(in GameplayAbility ability, in GameplayTagContainer failureReason);
+	public delegate void AbilityEnded(in GameplayAbility ability);
 	public delegate void ImmunityBlockGE(in GameplayEffectSpec blockedSpec, in ActiveGameplayEffect immunityGameplayEffect);
 	public delegate bool GameplayEffectApplicationQuery(in ActiveGameplayEffectsContainer activeGEContainer, in GameplayEffectSpec geSpecToConsider);
 
-	public class AbilitySystemComponent : MonoBehaviour
+	public class AbilitySystemComponent : MonoBehaviour, IGameplayTagAssetInterface
 	{
 		public delegate void OnGameplayEffectAppliedDelegate(AbilitySystemComponent instigator, in GameplayEffectSpec spec, ActiveGameplayEffectHandle handle);
 		public GameplayTagCountContainer GameplayTagCountContainer = new();
@@ -30,6 +32,12 @@ namespace GameplayAbilities
 		public OnGameplayEffectAppliedDelegate OnActiveGameplayEffectAddedDelegateToSelf;
 		public OnGameplayEffectAppliedDelegate OnPeriodicGameplayEffectExecutedDelegateOnSelf;
 		public OnGameplayEffectAppliedDelegate OnPeriodicGameplayEffectExecutedDelegateOnTarget;
+
+		public GenericAbilityDelegate AbilityActivatedCallbacks;
+		public AbilityEnded AbilityEndedCallbacks;
+		public GameplayAbilityEndedDelegate OnAbilityEnded;
+		public GenericAbilityDelegate AbilityCommittedCallbacks;
+		public AbilityFailedDelegate AbilityFailedCallbacks;
 
 		private float OutgoingDuration;
 		private float IncomingDuration;
@@ -62,6 +70,14 @@ namespace GameplayAbilities
 				GameplayEffectAttributeCaptureSource.Target,
 				false
 			));
+
+		public bool UserAbilityActivationInhibited;
+
+		private GameplayTagContainer InternalTryActivateAbilityFailureTags = new();
+
+		protected Dictionary<GameplayTag, List<GameplayAbilitySpecHandle>> GameplayEventTriggerdAbilities = new();
+		protected Dictionary<GameplayTag, List<GameplayAbilitySpecHandle>> OwnedTagTriggeredAbilities = new();
+		protected float AbilityLastActivatedTime;
 
 		private void Awake()
 		{
@@ -256,11 +272,6 @@ namespace GameplayAbilities
 			return returnHandle;
 		}
 
-		public GameplayEffectSpec ApplyGameplayEffectSpec(GameplayEffectSpec spec)
-		{
-			return spec;
-		}
-
 		public void InhibitActiveGameplayEffect(ActiveGameplayEffectHandle activeGEHandle, bool inhibit)
 		{
 			ActiveGameplayEffect activeGE = ActiveGameplayEffects.GetActiveGameplayEffect(activeGEHandle);
@@ -320,7 +331,7 @@ namespace GameplayAbilities
 
 		public void ExecuteGameplayEffect(GameplayEffectSpec spec)
 		{
-			Assert.IsTrue(spec.Duration == GameplayEffectConstants.InstantApplication || spec.Period == GameplayEffectConstants.NoPeriod);
+			Debug.Assert(spec.Duration == GameplayEffectConstants.InstantApplication || spec.Period == GameplayEffectConstants.NoPeriod);
 
 			Debug.Log($"Executed {spec.Def}");
 			foreach (GameplayModifierInfo modifier in spec.Def.Modifiers)
@@ -352,80 +363,91 @@ namespace GameplayAbilities
 			}
 		}
 
-		public void UpdateTagMap_Internal(in GameplayTagContainer container, in int count_delta)
+		public GameplayTagContainer GetBlockedAbilityTags()
 		{
-			if (count_delta > 0)
+			return BlockedAbilityTags.ExplicitTags;
+		}
+
+		protected void UpdateTagMap_Internal(in GameplayTagContainer container, in int countDelta)
+		{
+			if (countDelta > 0)
 			{
 				foreach (GameplayTag tag in container)
 				{
-					if (GameplayTagCountContainer.UpdateTagCount(tag, count_delta))
+					if (GameplayTagCountContainer.UpdateTagCount(tag, countDelta))
 					{
 						OnTagUpdated(tag, true);
 					}
 				}
 			}
-			else if (count_delta < 0)
+			else if (countDelta < 0)
 			{
-				List<GameplayTag> removed_tags = new();
-				removed_tags.Reserve(container.Count);
-				List<DeferredTagChangeDelegate> deferred_tag_change_delegates = new();
+				List<GameplayTag> removedTags = new();
+				removedTags.Reserve(container.Count);
+				List<DeferredTagChangeDelegate> deferredTagChangeDelegates = new();
 
 				foreach (GameplayTag tag in container)
 				{
-					if (GameplayTagCountContainer.UpdateTagCount_DeferredParentRemoval(tag, count_delta, deferred_tag_change_delegates))
+					if (GameplayTagCountContainer.UpdateTagCount_DeferredParentRemoval(tag, countDelta, deferredTagChangeDelegates))
 					{
-						removed_tags.Add(tag);
+						removedTags.Add(tag);
 					}
 				}
 
-				if (removed_tags.Count > 0)
+				if (removedTags.Count > 0)
 				{
 					GameplayTagCountContainer.FillParentTags();
 				}
 
-				foreach (DeferredTagChangeDelegate @delegate in deferred_tag_change_delegates)
+				foreach (DeferredTagChangeDelegate @delegate in deferredTagChangeDelegates)
 				{
 					@delegate.Invoke();
 				}
 
-				foreach (GameplayTag tag in removed_tags)
+				foreach (GameplayTag tag in removedTags)
 				{
 					OnTagUpdated(tag, false);
 				}
 			}
 		}
 
-		public virtual void OnTagUpdated(in GameplayTag tag, bool tag_exists)
+		public virtual void OnTagUpdated(in GameplayTag tag, bool tagExists)
 		{
 
 		}
 
-		public void AddLooseGameplayTags(GameplayTagContainer gameplay_tags, int count = 1)
+		public void AddLooseGameplayTags(GameplayTagContainer gameplayTags, int count = 1)
 		{
-			UpdateTagMap(gameplay_tags, count);
+			UpdateTagMap(gameplayTags, count);
 		}
 
-		public void RemoveLooseGameplayTags(GameplayTagContainer gameplay_tags, int count = -1)
+		public void RemoveLooseGameplayTags(GameplayTagContainer gameplayTags, int count = -1)
 		{
-			UpdateTagMap(gameplay_tags, count);
+			UpdateTagMap(gameplayTags, count);
 		}
 
-		public OnGameplayEffectTagCountChanged RegisterGameplayTagEvent(GameplayTag tag, GameplayTagEventType eventType)
+
+		public OnGameplayEffectTagCountChanged RegisterGameplayTagEvent(GameplayTag tag, GameplayTagEventType eventType = GameplayTagEventType.NewOrRemoved)
 		{
 			return GameplayTagCountContainer.RegisterGameplayTagEvent(tag, eventType);
 		}
 
-		public bool UnregisterGameplayTagEvent(OnGameplayEffectTagCountChanged @delegate, GameplayTag tag, GameplayTagEventType eventType)
+		public bool UnregisterGameplayTagEvent(OnGameplayEffectTagCountChanged @delegate, GameplayTag tag, GameplayTagEventType eventType = GameplayTagEventType.NewOrRemoved)
 		{
 			var de = GameplayTagCountContainer.RegisterGameplayTagEvent(tag, eventType);
 			de -= @delegate;
 			return de == null;
 		}
 
-		public void GetOwnedGameplayTags(GameplayTagContainer tag_container)
+		public void GetOwnedGameplayTags(GameplayTagContainer tagContainer)
 		{
-			tag_container.Reset();
-			tag_container.AppendTags(GameplayTagCountContainer.ExplicitTags);
+			tagContainer.Reset();
+			tagContainer.AppendTags(GameplayTagCountContainer.ExplicitTags);
+		}
+
+		public GameplayTagContainer GetOwnedGameplayTags()
+		{
+			return GameplayTagCountContainer.ExplicitTags;
 		}
 		#endregion
 
@@ -571,19 +593,65 @@ namespace GameplayAbilities
 
 		}
 
-		public void NotifyAbilityCommit(GameplayAbility ability)
+		public virtual void NotifyAbilityCommit(GameplayAbility ability)
 		{
+			AbilityCommittedCallbacks?.Invoke(ability);
 
 		}
 
-		public void NotifyAbilityActivated(GameplayAbilitySpecHandle handle, GameplayAbility ability)
+		public virtual void NotifyAbilityActivated(GameplayAbilitySpecHandle handle, GameplayAbility ability)
 		{
-
+			AbilityActivatedCallbacks?.Invoke(ability);
 		}
 
-		public void NotifyAbilityEnd(GameplayAbilitySpecHandle handle, GameplayAbility ability, bool was_cancelled)
+		public virtual void NotifyAbilityFailed(GameplayAbilitySpecHandle handle, GameplayAbility ability, in GameplayTagContainer failureReason)
 		{
+			AbilityFailedCallbacks?.Invoke(ability, failureReason);
+		}
 
+		public virtual void NotifyAbilityEnd(GameplayAbilitySpecHandle handle, GameplayAbility ability, bool wasCancelled)
+		{
+			Debug.Assert(ability != null);
+			GameplayAbilitySpec spec = FindAbilitySpecFromHandle(handle);
+			if (spec == null)
+			{
+				return;
+			}
+
+			Debug.Log($"{this.name}: Ended [{handle}] {(spec.GetPrimaryInstance() ? spec.GetPrimaryInstance().name : ability.name)}. Level: {spec.Level}. WasCancelled: {wasCancelled}");
+
+			Debug.Assert(spec.ActiveCount > 0, $"NotifyAbilityEnded called when the Spec->ActiveCount <= 0 for ability {ability.name}");
+			if (spec.ActiveCount > 0)
+			{
+				spec.ActiveCount--;
+			}
+
+			AbilityEndedCallbacks?.Invoke(ability);
+			OnAbilityEnded?.Invoke(new AbilityEndedData(ability, handle, wasCancelled));
+
+			spec = FindAbilitySpecFromHandle(handle);
+			if (spec == null)
+			{
+				Debug.LogError($"NotifyAbilityEnded({ability}): {handle} lost its active handle halfway through the function.");
+				return;
+			}
+
+			if (ability.InstancingPolicy == GameplayAbilityInstancingPolicy.InstancedPerExecution)
+			{
+				spec.NonReplicatedInstances.Remove(ability);
+			}
+		}
+
+		public GameplayAbility CreateNewInstanceOfAbility(GameplayAbilitySpec spec, in GameplayAbility ability)
+		{
+			Debug.Assert(ability != null);
+
+			GameplayAbility abilityInstance = Instantiate(ability);
+			Debug.Assert(abilityInstance != null);
+
+			spec.NonReplicatedInstances.Add(abilityInstance);
+
+			return abilityInstance;
 		}
 
 		public GameplayAbilitySpec FindAbilitySpecFromHandle(GameplayAbilitySpecHandle handle)
@@ -598,9 +666,41 @@ namespace GameplayAbilities
 			return null;
 		}
 
-		public void ApplyAbilityBlockAndCancelTags(GameplayTagContainer AbilityTags, GameplayAbility RequestingAbility, bool EnableBlockTags, GameplayTagContainer BlockTags, bool bExecuteCancelTags, GameplayTagContainer CancelTags)
+		public void ApplyAbilityBlockAndCancelTags(GameplayTagContainer abilityTags, GameplayAbility requestingAbility, bool enableBlockTags, in GameplayTagContainer blockTags, bool executeCancelTags, in GameplayTagContainer cancelTags)
 		{
+			if (enableBlockTags)
+			{
+				BlockAbilitiesWithTags(blockTags);
+			}
+			else
+			{
+				UnblockAbilitiesWithTags(blockTags);
+			}
 
+			if (executeCancelTags)
+			{
+				CancelAbilities(cancelTags, null, requestingAbility);
+			}
+		}
+
+		public void CancelAbilities(in GameplayTagContainer withTags, in GameplayTagContainer withoutTags, GameplayAbility ignore)
+		{
+			foreach (GameplayAbilitySpec spec in ActivatableAbilities.Items)
+			{
+				if (!spec.IsActive || spec.Ability == null)
+				{
+					continue;
+				}
+
+				GameplayTagContainer abilityTags = spec.Ability.AssetTags;
+				bool withTagPass = withoutTags == null || abilityTags.HasAny(withoutTags);
+				bool withoutTagPass = withTags == null || !abilityTags.HasAny(withTags);
+
+				if (withTagPass && withoutTagPass)
+				{
+					CancelAbilitySpec(spec, ignore);
+				}
+			}
 		}
 
 		public GameplayEffectContextHandle MakeEffectContext()
@@ -671,18 +771,134 @@ namespace GameplayAbilities
 
 			if (ownedSpec.Ability.InstancingPolicy == GameplayAbilityInstancingPolicy.InstancedPerActor)
 			{
-
+				CreateNewInstanceOfAbility(ownedSpec, ownedSpec.Ability);
 			}
 
 			OnGiveAbility(ownedSpec);
 
-			Debug.Log($"{this.name}: GiveAbility {ownedSpec.Ability} [{ownedSpec.Handle}] Level: {ownedSpec.Level} Source: {ownedSpec.SourceObject.name}");
+			Debug.Log($"{this.name}: GiveAbility {ownedSpec.Ability} [{ownedSpec.Handle}] Level: {ownedSpec.Level} Source: {ownedSpec.SourceObject}");
 			return ownedSpec.Handle;
 		}
 
 		public virtual void OnGiveAbility(GameplayAbilitySpec spec)
 		{
+			if (spec.Ability == null)
+			{
+				return;
+			}
 
+			GameplayAbility specAbility = spec.Ability;
+			bool instancedPerActor = specAbility.InstancingPolicy == GameplayAbilityInstancingPolicy.InstancedPerActor;
+			if (instancedPerActor)
+			{
+				if (spec.ReplicatedInstances.Count == 0)
+				{
+					CreateNewInstanceOfAbility(spec, specAbility);
+				}
+			}
+
+			if (spec.GameplayEffectHandle.IsValid())
+			{
+				AbilitySystemComponent sourceASC = spec.GameplayEffectHandle.OwningAbilitySystemComponent;
+				Debug.Assert(sourceASC != null, $"OnGiveAbility Spec '{spec}' GameplayEffectHandle had invalid Owning Ability System Component");
+				if (sourceASC != null)
+				{
+					ActiveGameplayEffect sourceActiveGE = sourceASC.ActiveGameplayEffects.GetActiveGameplayEffect(spec.GameplayEffectHandle);
+					Debug.Assert(sourceActiveGE != null, $"OnGiveAbility Spec '{spec}' GameplayEffectHandle was not active on Owning Ability System Component '{sourceASC.name}'");
+					if (sourceActiveGE != null)
+					{
+						sourceActiveGE.GrantedAbilityHandles.AddUnique(spec.Handle);
+					}
+				}
+			}
+
+			foreach (AbilityTriggerData triggerData in specAbility.AbilityTriggers)
+			{
+				GameplayTag eventTag = triggerData.TriggerTag;
+
+				var triggeredAbilityMap = triggerData.TriggerSource == GameplayAbilityTriggerSource.GameplayEvent ? GameplayEventTriggerdAbilities : OwnedTagTriggeredAbilities;
+
+				if (triggeredAbilityMap.ContainsKey(eventTag))
+				{
+					triggeredAbilityMap[eventTag].Add(spec.Handle);
+				}
+				else
+				{
+					List<GameplayAbilitySpecHandle> triggers = new()
+						{
+							spec.Handle
+						};
+					triggeredAbilityMap.Add(eventTag, triggers);
+				}
+
+				if (triggerData.TriggerSource != GameplayAbilityTriggerSource.GameplayEvent)
+				{
+					OnGameplayEffectTagCountChanged countChangedEvent = RegisterGameplayTagEvent(eventTag);
+
+					if (countChangedEvent != null)
+					{
+						// countChangedEvent.Add(OnGameplayEffectTagCountChanged);
+					}
+				}
+			}
+
+			GameplayAbility primaryInstance = instancedPerActor ? spec.GetPrimaryInstance() : null;
+
+			if (primaryInstance != null)
+			{
+				primaryInstance.OnGiveAbility(AbilityActorInfo, spec);
+			}
+			else
+			{
+				spec.Ability.OnGiveAbility(AbilityActorInfo, spec);
+			}
+		}
+
+		protected virtual void MonitoredTagChanged(GameplayTag tag, int newCount)
+		{
+			int triggerCount = 0;
+			if (OwnedTagTriggeredAbilities.ContainsKey(tag))
+			{
+				List<GameplayAbilitySpecHandle> triggeredAbilityHandles = OwnedTagTriggeredAbilities[tag];
+
+				foreach (GameplayAbilitySpecHandle abilityHandle in triggeredAbilityHandles)
+				{
+					GameplayAbilitySpec spec = FindAbilitySpecFromHandle(abilityHandle);
+					if (spec == null)
+					{
+						continue;
+					}
+
+					if (spec.Ability != null)
+					{
+						List<AbilityTriggerData> abilityTriggers = spec.Ability.AbilityTriggers;
+						foreach (AbilityTriggerData triggerData in abilityTriggers)
+						{
+							GameplayTag eventTag = triggerData.TriggerTag;
+
+							if (eventTag == tag)
+							{
+								if (newCount > 0)
+								{
+									GameplayEventData eventData = new()
+									{
+										EventMagnitude = newCount,
+										EventTag = eventTag,
+										Instigator = this
+									};
+									eventData.Target = eventData.Instigator;
+
+									InternalTryActivateAbility(spec.Handle, null, null, eventData);
+								}
+								else if (newCount == 0 && triggerData.TriggerSource == GameplayAbilityTriggerSource.OwnedTagPresent)
+								{
+									CancelAbilitySpec(spec, null);
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 
 		public void GetAllAbilities(List<GameplayAbilitySpecHandle> abilityHandles)
@@ -702,14 +918,156 @@ namespace GameplayAbilities
 
 		public bool TryActivateAbility(GameplayAbilitySpecHandle abilityToActivate)
 		{
+			GameplayTagContainer failureTags = new();
+
 			GameplayAbilitySpec spec = FindAbilitySpecFromHandle(abilityToActivate);
-			
-			return false;
+
+			if (spec == null)
+			{
+				Debug.LogWarning("TryActivateAbility called with invalid Handle");
+				return false;
+			}
+
+			if (spec.RemoveAfterActivation)
+			{
+				return false;
+			}
+
+			GameplayAbility ability = spec.Ability;
+
+			if (ability == null)
+			{
+				Debug.LogWarning("TryActivateAbility called with invalid Ability");
+				return false;
+			}
+
+			GameplayAbilityActorInfo actorInfo = AbilityActorInfo;
+
+			if (actorInfo == null || actorInfo.OwnerActor == null || actorInfo.AvatarActor == null)
+			{
+				return false;
+			}
+
+			return InternalTryActivateAbility(abilityToActivate);
+		}
+
+		public bool InternalTryActivateAbility(GameplayAbilitySpecHandle handle, GameplayAbility outInstancedAbility = null, OnGameplayAbilityEnded onGameplayAbilityEndedDelegate = null, GameplayEventData triggerEventData = null)
+		{
+			if (!handle.IsValid())
+			{
+				Debug.LogWarning($"InternalTryActivateAbility called with invalid Handle! ASC: {this.name}. AvatarActor: {AbilityActorInfo.AvatarActor.name}");
+				return false;
+			}
+
+			GameplayAbilitySpec spec = FindAbilitySpecFromHandle(handle);
+			if (spec == null)
+			{
+				Debug.LogWarning($"InternalTryActivateAbility called with a valid handle but no matching ability was found. Handle: {handle}. ASC: {this.name}. AvatarActor: {AbilityActorInfo.AvatarActor.name}");
+				return false;
+			}
+
+			GameplayAbilityActorInfo actorInfo = AbilityActorInfo;
+			if (actorInfo == null || actorInfo.OwnerActor == null || actorInfo.AvatarActor == null)
+			{
+				return false;
+			}
+
+			GameplayAbility ability = spec.Ability;
+			if (ability == null)
+			{
+				Debug.LogWarning($"InternalTryActivateAbility called with invalid Ability");
+				return false;
+			}
+
+			GameplayAbility instancedAbility = spec.GetPrimaryInstance();
+			GameplayAbility abilitySource = instancedAbility ?? ability;
+
+			if (triggerEventData != null)
+			{
+				if (!abilitySource.ShouldAbilityRespondToEvent(actorInfo, triggerEventData))
+				{
+					Debug.Log($"{this.name}: Can't activate {ability} because ShouldAbilityRespondToEvent was false.");
+
+					NotifyAbilityFailed(handle, abilitySource, InternalTryActivateAbilityFailureTags);
+					return false;
+				}
+			}
+
+			{
+				GameplayTagContainer sourceTags = triggerEventData != null ? triggerEventData.InstigatorTags : null;
+				GameplayTagContainer targetTags = triggerEventData != null ? triggerEventData.TargetTags : null;
+
+				if (!abilitySource.CanActivateAbility(handle, actorInfo, sourceTags, targetTags, out InternalTryActivateAbilityFailureTags))
+				{
+					if (InternalTryActivateAbilityFailureTags.IsEmpty())
+					{
+						InternalTryActivateAbilityFailureTags.AddTag(GameplayAbilitiesDeveloperSettings.instance.ActivateFailCanActivateAbilityTag);
+					}
+
+					NotifyAbilityFailed(handle, abilitySource, InternalTryActivateAbilityFailureTags);
+					return false;
+				}
+			}
+
+			if (ability.InstancingPolicy == GameplayAbilityInstancingPolicy.InstancedPerActor)
+			{
+				if (spec.IsActive)
+				{
+					if (ability.RetriggerInstancedAbility && instancedAbility)
+					{
+						Debug.Log($"{this.name}: Ending {instancedAbility} prematurely to retrigger.");
+
+						const bool wasCancelled = false;
+						instancedAbility.EndAbility(handle, actorInfo, wasCancelled);
+					}
+				}
+				else
+				{
+					Debug.Log($"Can't activate instanced per actor ability {ability} when their is already a currently active instance for this actor.");
+					return false;
+				}
+			}
+
+			if (ability.InstancingPolicy == GameplayAbilityInstancingPolicy.InstancedPerActor && !instancedAbility)
+			{
+				Debug.LogWarning($"InternalTryActivateAbility called but instanced ability is missing! Ability: {ability.name}");
+				return false;
+			}
+
+			if (ability.InstancingPolicy == GameplayAbilityInstancingPolicy.InstancedPerExecution)
+			{
+				instancedAbility = CreateNewInstanceOfAbility(spec, ability);
+				instancedAbility.CallActivateAbility(handle, actorInfo, onGameplayAbilityEndedDelegate, triggerEventData);
+			}
+			else
+			{
+				abilitySource.CallActivateAbility(handle, actorInfo, onGameplayAbilityEndedDelegate, triggerEventData);
+			}
+
+			if (instancedAbility)
+			{
+				if (outInstancedAbility != null)
+				{
+					outInstancedAbility = instancedAbility;
+				}
+			}
+
+			AbilityLastActivatedTime = Time.time;
+
+			Debug.Log($"{this.name}: Activated [{handle}] {abilitySource}. Level: {spec.Level}");
+			return true;
 		}
 
 		public void CancelAbilityHandle(in GameplayAbilitySpecHandle abilityHandle)
 		{
-
+			foreach (GameplayAbilitySpec spec in ActivatableAbilities.Items)
+			{
+				if (spec.Handle == abilityHandle)
+				{
+					CancelAbilitySpec(spec, null);
+					return;
+				}
+			}
 		}
 
 		public void CancelAbilitySpec(GameplayAbilitySpec spec, GameplayAbility ignore)
@@ -735,7 +1093,12 @@ namespace GameplayAbilities
 
 		public void SetUserAbilityActivationInhibited(bool newInhibit)
 		{
+			if (newInhibit && UserAbilityActivationInhibited)
+			{
+				Debug.LogWarning("Call to SetUserAbilityActivationInhibited(true) when UserAbilityActivationInhibited was already true");
+			}
 
+			UserAbilityActivationInhibited = newInhibit;
 		}
 	}
 }

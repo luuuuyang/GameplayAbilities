@@ -857,6 +857,14 @@ namespace GameplayAbilities
 			}
 		}
 
+		public void MergeSetByCallerMagnitude(in Dictionary<GameplayTag, float> magnitudes)
+		{
+			foreach (KeyValuePair<GameplayTag, float> pair in magnitudes)
+			{
+				SetByCallerTagMagnitudes.TryAdd(pair.Key, pair.Value);
+			}
+		}
+
 		public void SetupAttributeCaptureDefinitions()
 		{
 			List<GameplayEffectAttributeCaptureDefinition> captureDefs = new();

@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using GameplayTags;
 
 namespace GameplayAbilities
 {
@@ -7,6 +8,13 @@ namespace GameplayAbilities
 	{
 		public bool IgnoreAbilitySystemCooldowns;
 		public bool IgnoreAbilitySystemCosts;
+
+		public bool ShouldIgnoreCooldowns => IgnoreAbilitySystemCooldowns;
+		public bool ShouldIgnoreCosts => IgnoreAbilitySystemCosts;
+
+		public GameplayTag ActivateFailTagsBlockedTag;
+		public GameplayTag ActivateFailTagsMissingTag;
+		public GameplayTag ActivateFailCooldownTag;
 
 		//# Whether the game should allow the usage of gameplay mod evaluation channels or not
 		public bool AllowGameplayModEvaluationChannels;

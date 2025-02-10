@@ -140,7 +140,7 @@ namespace GameplayAbilities
     {
         public GameObject Instigator;
         public GameObject EffectCauser;
-        public UnityEngine.Object SourceObject;
+        public object SourceObject;
         public AbilitySystemComponent InstigatorAbilitySystemComponent;
         public GameplayAbility AbilityCdo;
         public GameplayAbility AbilityInstanceNotReplicated;
@@ -167,7 +167,7 @@ namespace GameplayAbilities
             AbilityLevel = ability.GetAbilityLevel();
         }
 
-        public void AddSourceObject(UnityEngine.Object source_object)
+        public void AddSourceObject(object source_object)
         {
             SourceObject = source_object;
         }
@@ -246,7 +246,7 @@ namespace GameplayAbilities
             }
         }
 
-        public void AddSourceObject(UnityEngine.Object sourceObject)
+        public void AddSourceObject(object sourceObject)
         {
             if (IsValid)
             {
@@ -370,6 +370,11 @@ namespace GameplayAbilities
             ExplicitTags.FillParentTags();
         }
 
+        public bool HasMatchingGameplayTag(GameplayTag tag)
+        {
+            return GameplayTagCountMap.GetValueOrDefault(tag) > 0;
+        }
+
         public bool HasAllMatchingGameplayTags(in GameplayTagContainer tagContainer)
         {
             if (tagContainer.Count == 0)
@@ -408,7 +413,32 @@ namespace GameplayAbilities
             return anyMatch;
         }
 
+        public bool SetTagCount(in GameplayTag tag, int newCount)
+        {
+            int existingCount = ExplicitTagCountMap.GetValueOrDefault(tag);
+            
+            int countDelta = newCount - existingCount;
+            if (countDelta != 0)
+            {
+                return UpdateTagMap_Internal(tag, countDelta);
+            }
+
+            return false;
+        }
+
+        public int GetTagCount(in GameplayTag tag)
+        {
+            return GameplayTagCountMap.GetValueOrDefault(tag);
+        }
+
+        public int GetExplicitTagCount(in GameplayTag tag)
+        {
+            return ExplicitTagCountMap.GetValueOrDefault(tag);
+        }
+
         public void UpdateTagCount(in GameplayTagContainer container, in int countDelta)
+
+
         {
             if (countDelta != 0)
             {
@@ -549,7 +579,7 @@ namespace GameplayAbilities
             bool createdSignificantChange = false;
             foreach (GameplayTag curTag in tagAndParentsContainer)
             {
-                if (GameplayTagCountMap.TryGetValue(curTag, out int tagCount))
+                if (!GameplayTagCountMap.TryGetValue(curTag, out int tagCount))
                 {
                     GameplayTagCountMap.Add(curTag, tagCount);
                 }

@@ -1,29 +1,40 @@
+using System.Collections.Generic;
 using GameplayTags;
+using UnityEngine;
 
 namespace GameplayAbilities
 {
-	public delegate void OnGameplayAbilityCanceled();
-
 	public delegate void OnGameplayAbilityEnded(GameplayAbility ability);
+	public delegate void OnGameplayAbilityCancelled();
 
-	public class GameplayAbility
+	public struct AbilityTriggerData
 	{
-		public GameplayTagContainer CancelAbilitiesWithTags;
-		public GameplayTagContainer BlockAbilitiesWithTags;
-		public GameplayTagContainer ActivationOwnedTags;
-		public GameplayTagContainer ActivationRequiredTags;
-		public GameplayTagContainer ActivationBlockedTags;
-		public GameplayTagContainer SourceRequiredTags;
-		public GameplayTagContainer SourceBlockedTags;
-		public GameplayTagContainer TargetRequiredTags;
-		public GameplayTagContainer TargetBlockedTags;
+		public GameplayTag TriggerTag;
+		public GameplayAbilityTriggerSource TriggerSource;
+	}
 
-		public GameplayTagContainer AbilityTags;
+	public class GameplayAbility : ScriptableObject
+	{
+		public GameplayTagContainer CancelAbilitiesWithTags = new();
+		public GameplayTagContainer BlockAbilitiesWithTags = new();
+		public GameplayTagContainer ActivationOwnedTags = new();
+		public GameplayTagContainer ActivationRequiredTags = new();
+		public GameplayTagContainer ActivationBlockedTags = new();
+		public GameplayTagContainer SourceRequiredTags = new();
+		public GameplayTagContainer SourceBlockedTags = new();
+
+		public GameplayTagContainer TargetRequiredTags = new();
+		public GameplayTagContainer TargetBlockedTags = new();
+
+
+		public GameplayTagContainer AbilityTags = new();
+		public GameplayTagContainer AssetTags => AbilityTags;
 
 		public GameplayAbilityInstancingPolicy InstancingPolicy;
 		public bool RetriggerInstancedAbility;
 
 		public GameplayEffect Cost;
+		public List<AbilityTriggerData> AbilityTriggers = new();
 		public GameplayEffect Cooldown;
 
 		public bool IsActive;
@@ -49,26 +60,141 @@ namespace GameplayAbilities
 
 		public bool MarkPendingKillOnAbilityEnd;
 
-		public event OnGameplayAbilityCanceled OnGameplayAbilityCanceled;
+		public event OnGameplayAbilityCancelled OnGameplayAbilityCanceled;
 		public event OnGameplayAbilityEnded OnGameplayAbilityEnded;
 		public event GameplayAbilityEndedDelegate OnGameplayAbilityEndedWithData;
 
-		public virtual bool CanActivateAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actor_info, in GameplayTagContainer source_tags, in GameplayTagContainer target_tags, out GameplayTagContainer optional_relevant_tags)
+		public virtual bool CanActivateAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, in GameplayTagContainer sourceTags, in GameplayTagContainer targetTags, out GameplayTagContainer optionalRelevantTags)
 		{
-			optional_relevant_tags = new GameplayTagContainer();
+			optionalRelevantTags = new GameplayTagContainer();
+			var avatarActor = actorInfo != null ? actorInfo.AvatarActor : null;
+			if (avatarActor == null)
+			{
+				return false;
+			}
+
+			var abilitySystemComponent = actorInfo.AbilitySystemComponent;
+			if (abilitySystemComponent == null)
+			{
+				return false;
+			}
+
+			GameplayAbilitySpec spec = abilitySystemComponent.FindAbilitySpecFromHandle(handle);
+			if (spec == null)
+			{
+				Debug.LogWarning($"CanActivateAbility {this} failed, called with invalid Handle");
+				return false;
+			}
+
+			if (abilitySystemComponent.UserAbilityActivationInhibited)
+			{
+				Debug.Log($"{actorInfo.OwnerActor}: {spec.Ability} could not be activated due to UserAbilityActivationInhibited returning true");
+				return false;
+			}
+
+			AbilitySystemGlobals abilitySystemGlobals = AbilitySystemGlobals.Instance;
+			if (abilitySystemGlobals.ShouldIgnoreCooldowns && !CheckCooldown(handle, actorInfo, optionalRelevantTags))
+
+			{
+				return false;
+			}
+
+			if (abilitySystemGlobals.ShouldIgnoreCosts && !CheckCost(handle, actorInfo, optionalRelevantTags))
+			{
+				return false;
+			}
+
+			if (!DoesAbilitySatisfyTagRequirements(abilitySystemComponent, sourceTags, targetTags, optionalRelevantTags))
+			{
+				return false;
+			}
+
 			return true;
 		}
 
-		public void CallActivateAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actor_info, OnGameplayAbilityEnded on_gameplay_ability_ended_delegate, in GameplayEventData trigger_event_data)
+		public virtual bool DoesAbilitySatisfyTagRequirements(AbilitySystemComponent abilitySystemComponent, in GameplayTagContainer sourceTags, in GameplayTagContainer targetTags, GameplayTagContainer optionalRelevantTags)
 		{
-			PreActivate(handle, actor_info, on_gameplay_ability_ended_delegate);
-			ActivateAbility(handle, actor_info, trigger_event_data);
+			optionalRelevantTags = new GameplayTagContainer();
+			bool blocked = false;
+			void CheckForBlocked(in GameplayTagContainer containerA, in GameplayTagContainer containerB)
+			{
+				if (containerA.IsEmpty() || containerB.IsEmpty() || !containerA.HasAny(containerB))
+				{
+					return;
+				}
+
+				if (optionalRelevantTags != null)
+				{
+					if (!blocked)
+					{
+						GameplayTag blockedTag = AbilitySystemGlobals.Instance.ActivateFailTagsBlockedTag;
+						optionalRelevantTags.AddTag(blockedTag);
+					}
+
+					optionalRelevantTags.AppendMatchingTags(containerA, containerB);
+				}
+
+				blocked = true;
+			}
+
+			bool missing = false;
+			void CheckForRequired(in GameplayTagContainer tagsToCheck, in GameplayTagContainer requiredTags)
+			{
+				if (requiredTags.IsEmpty() || tagsToCheck.HasAll(requiredTags))
+				{
+					return;
+				}
+
+				if (optionalRelevantTags != null)
+				{
+					if (!missing)
+					{
+						GameplayTag missingTag = AbilitySystemGlobals.Instance.ActivateFailTagsMissingTag;
+						optionalRelevantTags.AddTag(missingTag);
+					}
+
+					GameplayTagContainer missingTags = requiredTags;
+					missingTags.RemoveTags(tagsToCheck.GetGameplayTagParents());
+					optionalRelevantTags.AppendTags(missingTags);
+				}
+
+				missing = true;
+			}
+
+			CheckForBlocked(abilitySystemComponent.GetBlockedAbilityTags(), AssetTags);
+			CheckForBlocked(abilitySystemComponent.GetOwnedGameplayTags(), ActivationBlockedTags);
+			if (sourceTags is not null)
+			{
+				CheckForBlocked(sourceTags, SourceBlockedTags);
+			}
+			if (targetTags is not null)
+			{
+				CheckForBlocked(targetTags, TargetBlockedTags);
+			}
+
+			CheckForRequired(abilitySystemComponent.GetOwnedGameplayTags(), ActivationBlockedTags);
+			if (sourceTags is not null)
+			{
+				CheckForRequired(sourceTags, SourceRequiredTags);
+			}
+			if (targetTags is not null)
+			{
+				CheckForRequired(targetTags, TargetRequiredTags);
+			}
+
+			return !blocked && !missing;
+		}
+
+		public void CallActivateAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, OnGameplayAbilityEnded onGameplayAbilityEndedDelegate, in GameplayEventData triggerEventData)
+		{
+			PreActivate(handle, actorInfo, onGameplayAbilityEndedDelegate);
+			ActivateAbility(handle, actorInfo, triggerEventData);
 		}
 
 		// Do boilerplate init stuff and then call ActivateAbility
-		public void PreActivate(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actor_info, OnGameplayAbilityEnded on_gameplay_ability_ended)
+		public virtual void PreActivate(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, OnGameplayAbilityEnded onGameplayAbilityEndedDelegate)
 		{
-			var comp = actor_info.AbilitySystemComponent;
+			AbilitySystemComponent comp = actorInfo.AbilitySystemComponent;
 
 			if (InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
 			{
@@ -77,57 +203,114 @@ namespace GameplayAbilities
 				IsCancelable = true;
 			}
 
-			SetCurrentActorInfo(handle, actor_info);
+			SetCurrentActorInfo(handle, actorInfo);
 
 			comp.HandleChangeAbilityCanBeCanceled(AbilityTags, this, true);
 			comp.AddLooseGameplayTags(ActivationOwnedTags);
 
-			OnGameplayAbilityEnded += on_gameplay_ability_ended;
+			if (onGameplayAbilityEndedDelegate != null)
+			{
+				OnGameplayAbilityEnded += onGameplayAbilityEndedDelegate;
+			}
 
 			comp.NotifyAbilityActivated(handle, this);
-			comp.ApplyAbilityBlockAndCancelTags(AbilityTags, this, true, BlockAbilitiesWithTags, true, CancelAbilitiesWithTags);
 
-			var spec = comp.FindAbilitySpecFromHandle(handle);
-			spec.ActiveCount += 1;
-		}
+			comp.ApplyAbilityBlockAndCancelTags(AssetTags, this, true, BlockAbilitiesWithTags, true, CancelAbilitiesWithTags);
 
-		public void ActivateAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actor_info, in GameplayEventData trigger_event_data)
-		{
-
-		}
-
-		public bool CommitAbiltiy(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info, GameplayEventData trigger_event_data)
-		{
-			if (!CommitCheck(handle, actor_info))
+			GameplayAbilitySpec spec = comp.FindAbilitySpecFromHandle(handle);
+			if (spec == null)
 			{
-				return false;
+				Debug.LogWarning("PreActivate called with a valid handle but no matching ability spec was found. Handle: %s ASC: %s. AvatarActor: %s");
+				return;
 			}
-			CommitExecute(handle, actor_info, trigger_event_data);
-			actor_info.AbilitySystemComponent.NotifyAbilityCommit(this);
+
+
+			if (spec.ActiveCount < byte.MaxValue)
+			{
+				spec.ActiveCount++;
+			}
+			else
+			{
+				Debug.LogWarning($"PreActivate {this} called when the Spec->ActiveCount ({spec.ActiveCount}) >= byte.MaxValue");
+			}
+		}
+
+		public virtual void ActivateAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, in GameplayEventData triggerEventData)
+		{
+
+		}
+
+		public virtual bool ShouldAbilityRespondToEvent(in GameplayAbilityActorInfo actorInfo, in GameplayEventData payload)
+		{
 			return true;
 		}
 
-		public bool CommitCheck(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
+		public virtual bool CommitAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, GameplayTagContainer optionalRelevantTags)
+
 		{
-			if (!AbilitySystemGlobals.Instance.IgnoreAbilitySystemCooldowns && !CheckCooldown(handle, actor_info))
+			if (!CommitCheck(handle, actorInfo, optionalRelevantTags))
 			{
 				return false;
 			}
-			if (!AbilitySystemGlobals.Instance.IgnoreAbilitySystemCosts && !CheckCost(handle, actor_info))
-			{
-				return false;
-			}
+
+			CommitExecute(handle, actorInfo);
+
+			actorInfo.AbilitySystemComponent.NotifyAbilityCommit(this);
+
 			return true;
 		}
 
-		public bool CheckCooldown(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
+		public virtual bool CommitCheck(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, GameplayTagContainer optionalRelevantTags)
 		{
-			var cooldown_tags = GetCooldownTags();
-			if (cooldown_tags.Count > 0)
+			bool validHandle = handle.IsValid();
+			bool validActorInfoPieces = actorInfo != null && actorInfo.AbilitySystemComponent != null;
+			bool validSpecFound = validActorInfoPieces && actorInfo.AbilitySystemComponent.FindAbilitySpecFromHandle(handle) != null;
+
+			if (!validHandle || !validActorInfoPieces || !validSpecFound)
 			{
-				var ability_system_component = actor_info.AbilitySystemComponent;
-				if (ability_system_component != null && ability_system_component.HasAnyMatchingGameplayTags(cooldown_tags))
+				Debug.LogWarning($"GameplayAbility::CommitCheck provided an invalid handle or actor info or couldn't find ability spec: {this} Handle Valid: {validHandle} ActorInfo Valid: {validActorInfoPieces} Spec Not Found: {validSpecFound}");
+				return false;
+			}
+
+			AbilitySystemGlobals abilitySystemGlobals = AbilitySystemGlobals.Instance;
+
+			if (!abilitySystemGlobals.IgnoreAbilitySystemCooldowns && !CheckCooldown(handle, actorInfo, optionalRelevantTags))
+			{
+				return false;
+			}
+
+			if (!abilitySystemGlobals.IgnoreAbilitySystemCosts && !CheckCost(handle, actorInfo, optionalRelevantTags))
+			{
+				return false;
+			}
+
+			return true;
+		}
+
+		public virtual bool CheckCooldown(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, GameplayTagContainer optionalRelevantTags)
+		{
+			if (actorInfo == null)
+			{
+				return true;
+			}
+
+			GameplayTagContainer cooldownTags = GetCooldownTags();
+			if (cooldownTags != null && !cooldownTags.IsEmpty())
+			{
+				AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
+				if (abilitySystemComponent != null && abilitySystemComponent.HasAnyMatchingGameplayTags(cooldownTags))
 				{
+					if (optionalRelevantTags != null)
+					{
+						GameplayTag failCooldownTag = AbilitySystemGlobals.Instance.ActivateFailCooldownTag;
+						if (failCooldownTag.IsValid())
+						{
+							optionalRelevantTags.AddTag(failCooldownTag);
+						}
+
+						optionalRelevantTags.AppendMatchingTags(abilitySystemComponent.GetOwnedGameplayTags(), cooldownTags);
+					}
+
 					return false;
 				}
 			}
@@ -139,12 +322,20 @@ namespace GameplayAbilities
 			return Cooldown.GrantedTags;
 		}
 
-		public bool CheckCost(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
+		public virtual bool CheckCost(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, GameplayTagContainer optionalRelevantTags)
 		{
-			var ability_system_component = actor_info.AbilitySystemComponent;
-			if (ability_system_component != null && !ability_system_component.CanApplyAttributeModifiers(Cost, GetAbilityLevelForNonInstanced(handle, actor_info), MakeEffectContext(handle, actor_info)))
+			GameplayEffect costGE = Cost;
+			if (costGE != null)
 			{
-				return false;
+				AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
+				if (abilitySystemComponent != null)
+				{
+					if (!abilitySystemComponent.CanApplyAttributeModifiers(costGE, GetAbilityLevel(handle, actorInfo), MakeEffectContext(handle, actorInfo)))
+					{
+
+					}
+					return false;
+				}
 			}
 			return true;
 		}
@@ -154,39 +345,54 @@ namespace GameplayAbilities
 			return Cost.GrantedTags;
 		}
 
-		public void CommitExecute(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info, GameplayEventData trigger_event_data)
+		public virtual void CommitExecute(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo)
 		{
-			ApplyCooldown(handle, actor_info);
-			ApplyCost(handle, actor_info);
+			ApplyCooldown(handle, actorInfo);
+
+			ApplyCost(handle, actorInfo);
 		}
 
-		public bool CanBeCanceled()
+		public virtual bool CanBeCanceled()
 		{
-			return InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced ? true : IsCancelable;
+			if (InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
+			{
+				return IsCancelable;
+			}
+
+			return true;
 		}
 
-		public virtual void CancelAbility(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
+		public virtual void CancelAbility(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo)
 		{
 			if (CanBeCanceled())
 			{
 				OnGameplayAbilityCanceled?.Invoke();
-				EndAbility(handle, actor_info, true);
+
+				bool wasCancelled = true;
+				EndAbility(handle, actorInfo, wasCancelled);
 			}
 		}
 
-		public void EndAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actor_info, bool was_cancelled)
+		public virtual void EndAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, bool wasCancelled)
 		{
-			if (IsEndAbilityValid(handle, actor_info))
+			if (IsEndAbilityValid(handle, actorInfo))
 			{
 				if (InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
 				{
 					IsAbilityEnding = true;
 				}
 
+				if (IsActive == false && InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
+				{
+					return;
+				}
+
+				TimerManager.Instance.ClearAllTimersForObject(this);
+
 				OnGameplayAbilityEnded?.Invoke(this);
 				OnGameplayAbilityEnded = null;
 
-				OnGameplayAbilityEndedWithData?.Invoke(new AbilityEndedData(this, handle, was_cancelled));
+				OnGameplayAbilityEndedWithData?.Invoke(new AbilityEndedData(this, handle, wasCancelled));
 				OnGameplayAbilityEndedWithData = null;
 
 				if (InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
@@ -194,140 +400,217 @@ namespace GameplayAbilities
 					IsActive = false;
 					IsAbilityEnding = false;
 				}
-				var ability_system_component = actor_info.AbilitySystemComponent;
-				if (ability_system_component != null)
+
+				AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
+				if (abilitySystemComponent != null)
 				{
-					ability_system_component.RemoveLooseGameplayTags(ActivationOwnedTags);
-					// TODO: extend variable overrides
+					abilitySystemComponent.RemoveLooseGameplayTags(ActivationOwnedTags);
+
 					if (CanBeCanceled())
 					{
-						ability_system_component.HandleChangeAbilityCanBeCanceled(AbilityTags, this, false);
+						abilitySystemComponent.HandleChangeAbilityCanBeCanceled(AssetTags, this, false);
 					}
 
 					if (IsBlockingOtherAbilities)
 					{
-						ability_system_component.ApplyAbilityBlockAndCancelTags(AbilityTags, this, false, BlockAbilitiesWithTags, false, CancelAbilitiesWithTags);
+						abilitySystemComponent.ApplyAbilityBlockAndCancelTags(AssetTags, this, false, BlockAbilitiesWithTags, false, CancelAbilitiesWithTags);
 					}
 
-					ability_system_component.NotifyAbilityEnd(handle, this, was_cancelled);
+					abilitySystemComponent.NotifyAbilityEnd(handle, this, wasCancelled);
 				}
 			}
 		}
 
-		public bool IsEndAbilityValid(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
+		public bool IsEndAbilityValid(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo)
 		{
-			var ability_comp = actor_info.AbilitySystemComponent;
-			if (ability_comp == null)
+			if ((IsActive == false || IsAbilityEnding == true) && InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
 			{
+				Debug.Log($"IsEndAbilityValid returning false on Ability {this} due to EndAbility being called multiple times");
 				return false;
 			}
-			var spec = ability_comp.FindAbilitySpecFromHandle(handle);
-			var isSpecActive = (spec is not null ? spec.IsActive() : IsActive);
+
+			AbilitySystemComponent abilityComp = actorInfo != null ? actorInfo.AbilitySystemComponent : null;
+			if (abilityComp == null)
+			{
+				Debug.Log($"IsEndAbilityValid returning false on Ability {this} due to AbilitySystemComponent being invalid");
+				return false;
+			}
+
+			GameplayAbilitySpec spec = abilityComp.FindAbilitySpecFromHandle(handle);
+			bool isSpecActive = spec is not null ? spec.IsActive : IsActive;
+
 			if (!isSpecActive)
 			{
+				Debug.Log($"IsEndAbilityValid returning false on Ability {this} due to spec not being active");
 				return false;
 			}
+
 			return true;
 		}
 
-		public void ApplyCost(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
+		public virtual void ApplyCost(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo)
 		{
-			ApplyGameplayEffectToOwner(handle, actor_info, Cost, GetAbilityLevelForNonInstanced(handle, actor_info));
-		}
-
-		public void ApplyCooldown(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
-		{
-			ApplyGameplayEffectToOwner(handle, actor_info, Cooldown, GetAbilityLevelForNonInstanced(handle, actor_info));
-		}
-
-		public void ApplyGameplayEffectToOwner(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info, GameplayEffect gameplay_effect, int gameplay_effect_level, int stacks = 1)
-		{
-			var spec_handle = MakeOutgoingGameplayEffectSpec(handle, actor_info, gameplay_effect, gameplay_effect_level);
-			spec_handle.Data.StackCount = stacks;
-			ApplyGameplayEffectSpecToOwner(handle, actor_info, spec_handle);
-		}
-
-		public void ApplyGameplayEffectSpecToOwner(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info, GameplayEffectSpecHandle spec_handle)
-		{
-			var ability_system_component = actor_info.AbilitySystemComponent;
-			if (ability_system_component != null)
+			GameplayEffect costGE = Cost;
+			if (costGE != null)
 			{
-				ability_system_component.ApplyGameplayEffectSpecToSelf(spec_handle.Data);
+				ApplyGameplayEffectToOwner(handle, actorInfo, costGE, GetAbilityLevel(handle, actorInfo));
 			}
 		}
 
-		public GameplayEffectSpecHandle MakeOutgoingGameplayEffectSpec(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info, GameplayEffect gameplay_effect, int level)
+		public virtual void ApplyCooldown(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo)
 		{
-			var ability_system_component = actor_info.AbilitySystemComponent;
-			var new_handle = ability_system_component.MakeOutgoingSpec(gameplay_effect, level, MakeEffectContext(handle, actor_info));
-			var ability_spec = ability_system_component.FindAbilitySpecFromHandle(handle);
-			ApplyAbilityTagsToGameplayEffectSpec(new_handle.Data, ability_spec);
-			return new_handle;
+			GameplayEffect cooldownGE = Cooldown;
+			if (cooldownGE != null)
+			{
+				ApplyGameplayEffectToOwner(handle, actorInfo, cooldownGE, GetAbilityLevel(handle, actorInfo));
+			}
 		}
 
-		public GameplayEffectContextHandle MakeEffectContext(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
+		public ActiveGameplayEffectHandle ApplyGameplayEffectToOwner(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo, GameplayEffect gameplayEffect, int gameplayEffectLevel, int stacks = 1)
 		{
-			var context = new GameplayEffectContextHandle();
-			context.AddInstigator(actor_info.OwnerActor, actor_info.AvatarActor);
+			if (gameplayEffect != null)
+			{
+				GameplayEffectSpecHandle specHandle = MakeOutgoingGameplayEffectSpec(handle, actorInfo, gameplayEffect, gameplayEffectLevel);
+				if (specHandle.IsValid())
+				{
+					specHandle.Data.StackCount = stacks;
+					return ApplyGameplayEffectSpecToOwner(handle, actorInfo, specHandle);
+				}
+			}
 
+			return new ActiveGameplayEffectHandle();
+		}
+
+		public ActiveGameplayEffectHandle ApplyGameplayEffectSpecToOwner(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, GameplayEffectSpecHandle specHandle)
+		{
+			if (specHandle.IsValid())
+			{
+				AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
+				if (abilitySystemComponent != null)
+				{
+					return abilitySystemComponent.ApplyGameplayEffectSpecToSelf(specHandle.Data);
+				}
+			}
+			return new ActiveGameplayEffectHandle();
+		}
+
+		public virtual GameplayEffectSpecHandle MakeOutgoingGameplayEffectSpec(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo, GameplayEffect gameplayEffect, int level)
+		{
+			if (actorInfo == null)
+			{
+				return new GameplayEffectSpecHandle();
+			}
+
+			AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
+
+			GameplayEffectSpecHandle newHandle = abilitySystemComponent.MakeOutgoingSpec(gameplayEffect, level, MakeEffectContext(handle, actorInfo));
+			if (newHandle.IsValid())
+			{
+				GameplayAbilitySpec abilitySpec = abilitySystemComponent.FindAbilitySpecFromHandle(handle);
+				ApplyAbilityTagsToGameplayEffectSpec(newHandle.Data, abilitySpec);
+
+				if (abilitySpec != null)
+				{
+					newHandle.Data.SetByCallerTagMagnitudes = abilitySpec.SetByCallerTagMagnitudes;
+				}
+			}
+
+			return newHandle;
+		}
+
+		public virtual GameplayEffectContextHandle MakeEffectContext(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo)
+		{
+			GameplayEffectContextHandle context = new GameplayEffectContextHandle();
 			context.SetAbility(this);
 
-			var ability_spec = actor_info.AbilitySystemComponent.FindAbilitySpecFromHandle(handle);
-			if (ability_spec is not null)
+			if (actorInfo != null)
 			{
-				context.AddSourceObject(ability_spec.SourceObject);
+				context.AddInstigator(actorInfo.OwnerActor, actorInfo.AvatarActor);
+
+				GameplayAbilitySpec abilityspec = actorInfo.AbilitySystemComponent.FindAbilitySpecFromHandle(handle);
+				if (abilityspec is not null)
+				{
+					context.AddSourceObject(abilityspec.SourceObject);
+				}
 			}
 
 			return context;
 		}
 
-		public void ApplyAbilityTagsToGameplayEffectSpec(GameplayEffectSpec spec, GameplayAbilitySpec ability_spec)
+		public virtual void ApplyAbilityTagsToGameplayEffectSpec(GameplayEffectSpec spec, GameplayAbilitySpec abilitySpec)
 		{
-			var captured_source_tags = spec.CapturedSourceTags.SpecTags;
-			captured_source_tags.AppendTags(AbilityTags);
-		}
+			GameplayTagContainer capturedSourceTags = spec.CapturedSourceTags.SpecTags;
 
+			capturedSourceTags.AppendTags(AssetTags);
 
-		public void OnGiveAbility(GameplayAbilityActorInfo actor_info, GameplayAbilitySpec spec)
-		{
-			if (actor_info.AvatarActor != null)
+			if (abilitySpec != null)
 			{
-				OnAvatarSet(actor_info, spec);
+				capturedSourceTags.AppendTags(abilitySpec.DynamicSpecSourceTags);
+				IGameplayTagAssetInterface sourceObjAsTagInterface = abilitySpec.SourceObject as IGameplayTagAssetInterface;
+				if (sourceObjAsTagInterface != null)
+				{
+					GameplayTagContainer sourceObjTags = new GameplayTagContainer();
+					sourceObjAsTagInterface.GetOwnedGameplayTags(sourceObjTags);
+
+					capturedSourceTags.AppendTags(sourceObjTags);
+				}
+
+				spec.MergeSetByCallerMagnitude(abilitySpec.SetByCallerTagMagnitudes);
 			}
 		}
 
-		public void OnAvatarSet(GameplayAbilityActorInfo actor_info, GameplayAbilitySpec spec)
+		public virtual void OnGiveAbility(in GameplayAbilityActorInfo actorInfo, in GameplayAbilitySpec spec)
+		{
+			SetCurrentActorInfo(spec.Handle, actorInfo);
+
+			if (actorInfo != null && actorInfo.AvatarActor != null)
+			{
+				OnAvatarSet(actorInfo, spec);
+			}
+		}
+
+		public virtual void OnAvatarSet(GameplayAbilityActorInfo actorInfo, GameplayAbilitySpec spec)
 		{
 
 		}
 
-		public void SetCurrentActorInfo(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
+		public virtual void SetCurrentActorInfo(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo)
 		{
-			CurrentActorInfo = actor_info;
+			CurrentActorInfo = actorInfo;
 			CurrentSpecHandle = handle;
 		}
 
 		public int GetAbilityLevel()
 		{
-			return GetAbilityLevelForNonInstanced(CurrentSpecHandle, CurrentActorInfo);
+			if (CurrentActorInfo == null)
+			{
+				return 1;
+			}
+
+			return GetAbilityLevel(CurrentSpecHandle, CurrentActorInfo);
 		}
 
-		public int GetAbilityLevelForNonInstanced(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actor_info)
+		public int GetAbilityLevel(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo)
 		{
-			var ability_system_component = actor_info.AbilitySystemComponent;
-			if (ability_system_component != null)
+			if (actorInfo != null)
 			{
-				var spec = ability_system_component.FindAbilitySpecFromHandle(handle);
-				if (spec is not null)
+				AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
+				if (abilitySystemComponent != null)
 				{
-					return spec.Level;
+					GameplayAbilitySpec spec = abilitySystemComponent.FindAbilitySpecFromHandle(handle);
+					if (spec is not null)
+					{
+						return spec.Level;
+					}
 				}
 			}
+
+			Debug.LogWarning($"UameplayAbility::GetAbilityLevel. Invalid AbilitySpecHandle {handle} for Ability {this}. Returning level 1.");
 			return 1;
 		}
 
 		// Called when the ability is removed from an AbilitySystemComponent
-		public void OnRemoveAbility(GameplayAbilityActorInfo actor_info, GameplayAbilitySpec spec)
+		public virtual void OnRemoveAbility(GameplayAbilityActorInfo actorInfo, GameplayAbilitySpec spec)
 		{
 
 		}

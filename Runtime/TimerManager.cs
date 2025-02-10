@@ -420,6 +420,14 @@ namespace GameplayAbilities
 			return timer;
 		}
 
+		public void ClearAllTimersForObject(object @object)
+		{
+			if (@object != null)
+			{
+				InternalClearAllTimers(@object);
+			}
+		}
+
 		private TimerData FindTimer(in TimerHandle handle)
 		{
 			if (!handle.IsValid())
@@ -593,6 +601,22 @@ namespace GameplayAbilities
 			}
 
 			return -1;
+		}
+
+		private void InternalClearAllTimers(object @object)
+		{
+			if (@object == null)
+			{
+				return;
+			}
+
+			if (ObjectToTimers.TryGetValue(@object, out HashSet<TimerHandle> timersToRemove))
+			{
+				foreach (TimerHandle timerToRemove in timersToRemove)
+				{
+					InternalClearTimer(timerToRemove);
+				}
+			}
 		}
 
 		private float InternalGetTimerRate(TimerData timerData)

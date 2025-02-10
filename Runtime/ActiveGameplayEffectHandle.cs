@@ -4,7 +4,7 @@ namespace GameplayAbilities
 {
 	public static class GlobalActiveGameplayEffectHandles
 	{
-		public static Dictionary<ActiveGameplayEffectHandle, AbilitySystemComponent> Map = new Dictionary<ActiveGameplayEffectHandle, AbilitySystemComponent>();
+		public static Dictionary<ActiveGameplayEffectHandle, AbilitySystemComponent> Map = new();
 	}
 
 	public struct ActiveGameplayEffectHandle
@@ -13,14 +13,14 @@ namespace GameplayAbilities
 
 		private static int GHandleID = 0;
 
-		public ActiveGameplayEffectHandle(int handle)
+		public ActiveGameplayEffectHandle(int handle = -1)
 		{
 			Handle = handle;
 		}
 
 		public bool IsValid()
 		{
-			return Handle != GameplayEffectConstants.IndexNone;
+			return Handle != -1;
 		}
 
 		public static void ResetGlobalHandleMap()
@@ -28,12 +28,13 @@ namespace GameplayAbilities
 			GlobalActiveGameplayEffectHandles.Map.Clear();
 		}
 
-		public static ActiveGameplayEffectHandle GenerateNewHandle(AbilitySystemComponent owning_component)
+		public static ActiveGameplayEffectHandle GenerateNewHandle(AbilitySystemComponent owningComponent)
 		{
-			var new_handle = new ActiveGameplayEffectHandle(GHandleID++);
+			ActiveGameplayEffectHandle newHandle = new ActiveGameplayEffectHandle(GHandleID++);
 
-			GlobalActiveGameplayEffectHandles.Map[new_handle] = owning_component;
-			return new_handle;
+			GlobalActiveGameplayEffectHandles.Map.Add(newHandle, owningComponent);
+
+			return newHandle;
 		}
 
         public AbilitySystemComponent OwningAbilitySystemComponent => GlobalActiveGameplayEffectHandles.Map[this];
@@ -51,6 +52,21 @@ namespace GameplayAbilities
 		public static bool operator !=(ActiveGameplayEffectHandle a, ActiveGameplayEffectHandle b)
 		{
 			return a.Handle != b.Handle;
+		}
+
+		public override int GetHashCode()
+		{
+			return Handle.GetHashCode();
+		}
+
+		public override bool Equals(object obj)
+		{
+			if (obj is ActiveGameplayEffectHandle other)
+			{
+				return Handle == other.Handle;
+			}
+
+			return false;
 		}
 	}
 }

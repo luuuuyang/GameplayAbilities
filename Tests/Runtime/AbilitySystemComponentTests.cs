@@ -9,57 +9,55 @@ namespace GameplayAbilities.Tests
 {
     public class AbilitySystemComponentTests
     {
-        private class TestCallbacks
+        private class TestAllAbilitySystemComponentCallbacks
         {
             public bool ReceivedAbilityActivated;
             public bool ReceivedAbilityCommitted;
             public bool ReceivedAbilityFailed;
             public bool ReceivedAbilityEnded;
 
-            private readonly AbilitySystemComponent abilitySystemComponent;
-            private readonly GameplayAbility expectedAbility;
+            private readonly AbilitySystemComponent AbilitySystemComponent;
 
-            public TestCallbacks(AbilitySystemComponent asc, GameplayAbility expected)
+            public TestAllAbilitySystemComponentCallbacks(AbilitySystemComponent abilitySystemComponent, GameplayAbility expectedAbility)
             {
-                abilitySystemComponent = asc;
-                expectedAbility = expected;
+                AbilitySystemComponent = abilitySystemComponent;
 
-                // abilitySystemComponent.OnAbilityActivated.AddListener(OnAbilityActivated);
-                // abilitySystemComponent.OnAbilityCommitted.AddListener(OnAbilityCommitted);
-                // abilitySystemComponent.OnAbilityFailed.AddListener(OnAbilityFailed);
-                // abilitySystemComponent.OnAbilityEnded.AddListener(OnAbilityEnded);
+                abilitySystemComponent.AbilityActivatedCallbacks += (GameplayAbility ability) =>
+                {
+                    bool isCorrectAbility = IsSameAbility(ability, expectedAbility);
+                    Assert.IsTrue(isCorrectAbility, " AbilityActivatedCallbacks with Expected GameplayAbility Instance");
+                    ReceivedAbilityActivated = true;
+                };
+                
+                abilitySystemComponent.AbilityCommittedCallbacks += (GameplayAbility ability) =>
+                {
+                    bool isCorrectAbility = IsSameAbility(ability, expectedAbility);
+                    Assert.IsTrue(isCorrectAbility, " AbilityCommittedCallbacks with Expected GameplayAbility Instance");
+                    ReceivedAbilityCommitted = true;
+                };
+
+                abilitySystemComponent.AbilityFailedCallbacks += (in GameplayAbility ability, in GameplayTagContainer tags) =>
+                {
+                    bool isCorrectAbility = IsSameAbility(ability, expectedAbility);
+                    Assert.IsTrue(isCorrectAbility, " AbilityFailedCallbacks with Expected GameplayAbility Instance");
+                    ReceivedAbilityFailed = true;
+                };
+
+                abilitySystemComponent.AbilityEndedCallbacks += (in GameplayAbility ability) =>
+                {
+                    bool isCorrectAbility = IsSameAbility(ability, expectedAbility);
+                    Assert.IsTrue(isCorrectAbility, " AbilityEndedCallbacks with Expected GameplayAbility Instance");
+                    ReceivedAbilityEnded = true;
+                };
             }
 
-            ~TestCallbacks()
+            public static bool IsSameAbility(GameplayAbility ability, GameplayAbility expectedAbility)
             {
-                // abilitySystemComponent.OnAbilityActivated.RemoveListener(OnAbilityActivated);
-                // abilitySystemComponent.OnAbilityCommitted.RemoveListener(OnAbilityCommitted);
-                // abilitySystemComponent.OnAbilityFailed.RemoveListener(OnAbilityFailed);
-                // abilitySystemComponent.OnAbilityEnded.RemoveListener(OnAbilityEnded);
-            }
-
-            private void OnAbilityActivated(GameplayAbility ability)
-            {
-                Assert.AreEqual(expectedAbility, ability, "AbilityActivated with Expected GameplayAbility Instance");
-                ReceivedAbilityActivated = true;
-            }
-
-            private void OnAbilityCommitted(GameplayAbility ability)
-            {
-                Assert.AreEqual(expectedAbility, ability, "AbilityCommitted with Expected GameplayAbility Instance");
-                ReceivedAbilityCommitted = true;
-            }
-
-            private void OnAbilityFailed(GameplayAbility ability, GameplayTagContainer tags)
-            {
-                Assert.AreEqual(expectedAbility, ability, "AbilityFailed with Expected GameplayAbility Instance");
-                ReceivedAbilityFailed = true;
-            }
-
-            private void OnAbilityEnded(GameplayAbility ability)
-            {
-                Assert.AreEqual(expectedAbility, ability, "AbilityEnded with Expected GameplayAbility Instance");
-                ReceivedAbilityEnded = true;
+                if (expectedAbility.InstancingPolicy == GameplayAbilityInstancingPolicy.NonInstanced)
+                {
+                    return ability == expectedAbility;
+                }
+                return true;
             }
         }
 
@@ -94,36 +92,37 @@ namespace GameplayAbilities.Tests
         public IEnumerator Test_ActivateAbilityFlow()
         {
             // Give ability to source
-            var abilitySpec = new GameplayAbilitySpec(new GameplayAbility(), 1, sourceGO);
-            var givenHandle = sourceASC.GiveAbility(abilitySpec);
-            var foundSpec = sourceASC.FindAbilitySpecFromHandle(givenHandle);
+            var tempAbilitySpec = new GameplayAbilitySpec(ScriptableObject.CreateInstance<GameplayAbility>(), 1);
+            var givenAbilitySpecHandle = sourceASC.GiveAbility(tempAbilitySpec);
+            var abilitySpec = sourceASC.FindAbilitySpecFromHandle(givenAbilitySpecHandle);
 
             // Verify ability was given
-            var allAbilities = new List<GameplayAbilitySpecHandle>();
-            sourceASC.GetAllAbilities(allAbilities);
-            Assert.IsTrue(allAbilities.Count > 0, "GiveAbility");
-            Assert.AreEqual(givenHandle, allAbilities[0], "GiveAbility - Correct handle");
+            var gameplayAbilitySpecHandles = new List<GameplayAbilitySpecHandle>();
+            sourceASC.GetAllAbilities(gameplayAbilitySpecHandles);
+            bool hasAbility = gameplayAbilitySpecHandles.Count > 0;
+            bool hasCorrectAbility = hasAbility && gameplayAbilitySpecHandles[0] == givenAbilitySpecHandle;
+            Assert.IsTrue(hasCorrectAbility, "GiveAbility");
 
             // Verify activatable abilities match
             var activatableAbilities = sourceASC.GetActivatableAbilities();
-            Assert.AreEqual(allAbilities.Count, activatableAbilities.Count, "GetAllAbilities() count matches GetActivatableAbilities()");
-            Assert.AreEqual(allAbilities[0], activatableAbilities[0].Handle, "GetAllAbilities() handle matches GetActivatableAbilities()");
+            bool hasActivatableAbilities = activatableAbilities.Count > 0;
+            bool bothArraysMatch = hasAbility && hasActivatableAbilities && gameplayAbilitySpecHandles[0] == activatableAbilities[0].Handle;
+            Assert.IsTrue(bothArraysMatch, "GetAllAbilities() == GetActivatableAbilities().Handle");
 
             // Test activation flow
-            var callbacks = new TestCallbacks(sourceASC, foundSpec.Ability);
+            var testCallbacks = new TestAllAbilitySystemComponentCallbacks(sourceASC, abilitySpec.Ability);
 
-            bool activated = sourceASC.TryActivateAbility(givenHandle);
-            Assert.IsTrue(activated, "TryActivateAbility executes successfully");
-            Assert.IsTrue(foundSpec.IsActive(), "AbilitySpec is active after activation");
-            Assert.IsTrue(callbacks.ReceivedAbilityActivated, "Received AbilityActivated callback");
-            Assert.IsFalse(callbacks.ReceivedAbilityCommitted, "No AbilityCommitted callback yet");
-            Assert.IsFalse(callbacks.ReceivedAbilityEnded, "No AbilityEnded callback yet");
-            Assert.IsFalse(callbacks.ReceivedAbilityFailed, "No AbilityFailed callback");
-
+            bool localActivation = sourceASC.TryActivateAbility(givenAbilitySpecHandle);
+            Assert.IsTrue(localActivation, "TryActivateAbility executes successfully (using FGameplayAbilitySpecHandle)");
+            Assert.IsTrue(abilitySpec.IsActive, " AbilitySpec.IsActive() after TryActivateAbility (using FGameplayAbilitySpecHandle)");
+            Assert.IsTrue(testCallbacks.ReceivedAbilityActivated, " AbilityActivated after TryActivateAbility (using FGameplayAbilitySpecHandle)");
+            Assert.IsFalse(testCallbacks.ReceivedAbilityCommitted, " AbilityCommitted after TryActivateAbility (using FGameplayAbilitySpecHandle)");
+            Assert.IsFalse(testCallbacks.ReceivedAbilityEnded, " AbilityEnded (prematurely) after TryActivateAbility (using FGameplayAbilitySpecHandle)");
+            Assert.IsFalse(testCallbacks.ReceivedAbilityFailed, " AbilityFailed after TryActivateAbility (with an Ability that should succeed)");
             // Test cancellation
-            sourceASC.CancelAbilityHandle(givenHandle);
-            Assert.IsTrue(callbacks.ReceivedAbilityEnded, "Received AbilityEnded after cancel");
-            Assert.IsFalse(foundSpec.IsActive(), "AbilitySpec is inactive after cancel");
+            sourceASC.CancelAbilityHandle(givenAbilitySpecHandle);
+            Assert.IsTrue(testCallbacks.ReceivedAbilityEnded, " AbilityEnded (after CancelAbilityHandle)");
+            Assert.IsFalse(abilitySpec.IsActive, " AbilitySpec.IsActive() (after CancelAbilityHandle)");
 
             yield return null;
         }
@@ -132,24 +131,34 @@ namespace GameplayAbilities.Tests
         public IEnumerator Test_FailedAbilityFlow()
         {
             // Give ability to source
-            var abilitySpec = new GameplayAbilitySpec(new GameplayAbility(), 1, sourceGO);
-            var givenHandle = sourceASC.GiveAbility(abilitySpec);
-            var foundSpec = sourceASC.FindAbilitySpecFromHandle(givenHandle);
+            var tempAbilitySpec = new GameplayAbilitySpec(ScriptableObject.CreateInstance<GameplayAbility>(), 1);
+            var givenAbilitySpecHandle = sourceASC.GiveAbility(tempAbilitySpec);
+            var abilitySpec = sourceASC.FindAbilitySpecFromHandle(givenAbilitySpecHandle);
 
+            List<GameplayAbilitySpecHandle> gameplayAbilitySpecHandles = new List<GameplayAbilitySpecHandle>();
+            sourceASC.GetAllAbilities(gameplayAbilitySpecHandles);
+            bool hasAbility = gameplayAbilitySpecHandles.Count > 0;
+            bool hasCorrectAbility = hasAbility && gameplayAbilitySpecHandles[0] == givenAbilitySpecHandle;
+            Assert.IsTrue(hasCorrectAbility, "GiveAbility");
+
+            var activatableAbilities = sourceASC.GetActivatableAbilities();
+            bool hasActivatableAbilities = activatableAbilities.Count > 0;
+            bool bothArraysMatch = hasAbility && hasActivatableAbilities && gameplayAbilitySpecHandles[0] == activatableAbilities[0].Handle;
+            Assert.IsTrue(bothArraysMatch, "GetAllAbilities() == GetActivatableAbilities().Handle");
             // Setup callbacks
-            var callbacks = new TestCallbacks(sourceASC, foundSpec.Ability);
+            var testCallbacks = new TestAllAbilitySystemComponentCallbacks(sourceASC, abilitySpec.Ability);
 
             // Inhibit activation
             sourceASC.SetUserAbilityActivationInhibited(true);
 
             // Try to activate
-            bool activated = sourceASC.TryActivateAbility(givenHandle);
-            Assert.IsFalse(activated, "TryActivateAbility fails when inhibited");
-            Assert.IsFalse(foundSpec.IsActive(), "AbilitySpec remains inactive");
-            Assert.IsFalse(callbacks.ReceivedAbilityActivated, "No AbilityActivated callback");
-            Assert.IsFalse(callbacks.ReceivedAbilityCommitted, "No AbilityCommitted callback");
-            Assert.IsFalse(callbacks.ReceivedAbilityEnded, "No AbilityEnded callback");
-            Assert.IsTrue(callbacks.ReceivedAbilityFailed, "Received AbilityFailed callback");
+            bool activated = sourceASC.TryActivateAbility(givenAbilitySpecHandle);
+            Assert.IsFalse(activated, "TryActivateAbility fails (using FGameplayAbilitySpecHandle)");
+            Assert.IsFalse(abilitySpec.IsActive, " AbilitySpec.IsActive() after TryActivateAbility (using FGameplayAbilitySpecHandle)");
+            Assert.IsFalse(testCallbacks.ReceivedAbilityActivated, " AbilityActivated after TryActivateAbility (using FGameplayAbilitySpecHandle)");
+            Assert.IsFalse(testCallbacks.ReceivedAbilityCommitted, " AbilityCommitted after TryActivateAbility (using FGameplayAbilitySpecHandle)");
+            Assert.IsFalse(testCallbacks.ReceivedAbilityEnded, " AbilityEnded (prematurely) after TryActivateAbility (using FGameplayAbilitySpecHandle)");
+            Assert.IsTrue(testCallbacks.ReceivedAbilityFailed, " AbilityFailed after TryActivateAbility (with an Ability that should fail)");
 
             yield return null;
         }

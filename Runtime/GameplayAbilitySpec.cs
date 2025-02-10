@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using GameplayTags;
 
 namespace GameplayAbilities
 {
@@ -22,17 +23,21 @@ namespace GameplayAbilities
 		}
 		private List<GameplayAbility> _AbilityInstances;
 
-		public GameObject SourceObject;
+		public object SourceObject;
 		// A count of the number of times this ability has been activated minus the number of times it has been ended. For instanced abilities this will be the number of currently active instances. Can't replicate until prediction accurately handles this.
 		public int ActiveCount;
 		public bool RemoveAfterActivation;
-		public ActiveGameplayEffectHandle GameplayEffectHandle;
+		public ActiveGameplayEffectHandle GameplayEffectHandle = new(-1);
 
-		public GameplayAbilitySpec(GameplayAbility ability, int level, GameObject source_object)
+		public GameplayTagContainer DynamicAbilityTags;
+		public GameplayTagContainer DynamicSpecSourceTags => DynamicAbilityTags;
+		public Dictionary<GameplayTag, float> SetByCallerTagMagnitudes;
+
+		public GameplayAbilitySpec(GameplayAbility ability, int level = 1, GameObject sourceObject = null)
 		{
 			Ability = ability;
 			Level = level;
-			SourceObject = source_object;
+			SourceObject = sourceObject;
 
 			Handle.GenerateNewHandle();
 		}
@@ -53,9 +58,6 @@ namespace GameplayAbilities
 			return null;
 		}
 
-		public bool IsActive()
-		{
-			return Ability != null && ActiveCount > 0;
-		}
-	}
+        public bool IsActive => Ability != null && ActiveCount > 0;
+    }
 }
