@@ -46,9 +46,9 @@ namespace GameplayAbilities
         protected GameplayTagContainer ValidTransientAggregatorIdentifiers;
 #endif
 
-        public void Execute(in GameplayEffectCustomExecutionParams execution_params, out GameplayEffectCustomExecutionOutput execution_output)
+        public void Execute(in GameplayEffectCustomExecutionParams executionParams, out GameplayEffectCustomExecutionOutput executionOutput)
         {
-            execution_output = new GameplayEffectCustomExecutionOutput();
+            executionOutput = new GameplayEffectCustomExecutionOutput();
         }
     }
 }

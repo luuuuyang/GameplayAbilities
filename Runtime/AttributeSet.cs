@@ -181,7 +181,7 @@ namespace GameplayAbilities
 
 		public void SetNumericValueChecked(float newValue, AttributeSet dest)
 		{
-			Assert.IsNotNull(dest);
+			Debug.Assert(dest != null);
 
 			float oldValue = 0f;
 
@@ -206,7 +206,7 @@ namespace GameplayAbilities
 			{
 				// 获取 GameplayAttributeData 的当前值
 				GameplayAttributeData attributeData = field.GetValue(dest) as GameplayAttributeData;
-				Assert.IsNotNull(attributeData);
+				Debug.Assert(attributeData != null);
 
 				oldValue = attributeData.CurrentValue;
 				dest.PreAttributeChange(this, newValue);
@@ -215,7 +215,7 @@ namespace GameplayAbilities
 			}
 			else
 			{
-				Assert.IsTrue(false);
+				Debug.Assert(false);
 			}
 		}
 

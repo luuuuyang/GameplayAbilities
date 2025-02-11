@@ -536,9 +536,10 @@ namespace GameplayAbilities
 		public AttributeSet GetAttributeSubobjectChecked(Type attributeClass)
 		{
 			AttributeSet set = GetAttributeSubobject(attributeClass);
-			Assert.IsNotNull(set);
+			Debug.Assert(set != null);
 			return set;
 		}
+
 
 		public AttributeSet GetOrCreateAttributeSubobject(Type attributeClass)
 		{

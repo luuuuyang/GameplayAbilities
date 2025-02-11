@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using GameplayTags;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace GameplayAbilities
@@ -7,38 +9,75 @@ namespace GameplayAbilities
 	public delegate void OnGameplayAbilityEnded(GameplayAbility ability);
 	public delegate void OnGameplayAbilityCancelled();
 
+	[Serializable]
 	public struct AbilityTriggerData
 	{
 		public GameplayTag TriggerTag;
 		public GameplayAbilityTriggerSource TriggerSource;
 	}
 
+	[CreateAssetMenu(fileName = "GameplayAbility", menuName = "GameplayAbilities/GameplayAbility")]
 	public class GameplayAbility : ScriptableObject
 	{
-		public GameplayTagContainer CancelAbilitiesWithTags = new();
-		public GameplayTagContainer BlockAbilitiesWithTags = new();
-		public GameplayTagContainer ActivationOwnedTags = new();
-		public GameplayTagContainer ActivationRequiredTags = new();
-		public GameplayTagContainer ActivationBlockedTags = new();
-		public GameplayTagContainer SourceRequiredTags = new();
-		public GameplayTagContainer SourceBlockedTags = new();
-
-		public GameplayTagContainer TargetRequiredTags = new();
-		public GameplayTagContainer TargetBlockedTags = new();
-
-
+		[FoldoutGroup("Tags")]
+		[LabelText("AssetTags (Default AbilityTags)")]
 		public GameplayTagContainer AbilityTags = new();
+
+		[FoldoutGroup("Tags")]
+		[SerializeField]
+		protected GameplayTagContainer CancelAbilitiesWithTags = new();
+
+		[FoldoutGroup("Tags")]
+		[SerializeField]
+		protected GameplayTagContainer BlockAbilitiesWithTags = new();
+
+		[FoldoutGroup("Tags")]
+		[SerializeField]
+		protected GameplayTagContainer ActivationOwnedTags = new();
+
+		[FoldoutGroup("Tags")]
+		[SerializeField]
+		protected GameplayTagContainer ActivationRequiredTags = new();
+
+		[FoldoutGroup("Tags")]
+		[SerializeField]
+		protected GameplayTagContainer ActivationBlockedTags = new();
+
+		[FoldoutGroup("Tags")]
+		[SerializeField]
+		protected GameplayTagContainer SourceRequiredTags = new();
+
+		[FoldoutGroup("Tags")]
+		[SerializeField]
+		protected GameplayTagContainer SourceBlockedTags = new();
+
+		[FoldoutGroup("Tags")]
+		[SerializeField]
+		protected GameplayTagContainer TargetRequiredTags = new();
+
+		[FoldoutGroup("Tags")]
+		[SerializeField]
+		protected GameplayTagContainer TargetBlockedTags = new();
+
 		public GameplayTagContainer AssetTags => AbilityTags;
 
+		[FoldoutGroup("Advanced")]
 		public GameplayAbilityInstancingPolicy InstancingPolicy;
+
+		[FoldoutGroup("Advanced")]
 		public bool RetriggerInstancedAbility;
 
+		[FoldoutGroup("Costs")]
 		public GameplayEffect Cost;
+
+		[FoldoutGroup("Triggers")]
 		public List<AbilityTriggerData> AbilityTriggers = new();
+
+		[FoldoutGroup("Cooldowns")]
 		public GameplayEffect Cooldown;
 
-		public bool IsActive;
-		public bool IsAbilityEnding;
+		protected bool IsActive;
+		protected bool IsAbilityEnding;
 		public bool IsBlockingOtherAbilities
 		{
 			get
@@ -53,12 +92,12 @@ namespace GameplayAbilities
 		}
 		private bool _IsBlockingOtherAbilities;
 
-		public bool IsCancelable;
+		protected bool IsCancelable;
 
 		public GameplayAbilityActorInfo CurrentActorInfo;
 		public GameplayAbilitySpecHandle CurrentSpecHandle;
 
-		public bool MarkPendingKillOnAbilityEnd;
+		protected bool MarkPendingKillOnAbilityEnd;
 
 		public event OnGameplayAbilityCancelled OnGameplayAbilityCanceled;
 		public event OnGameplayAbilityEnded OnGameplayAbilityEnded;
