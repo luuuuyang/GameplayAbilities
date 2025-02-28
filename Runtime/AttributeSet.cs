@@ -15,7 +15,9 @@ namespace GameplayAbilities
 	[Serializable]
 	public class GameplayAttributeData
 	{
+		[ReadOnly]
 		public float BaseValue;
+		[ReadOnly]
 		public float CurrentValue;
 
 		public GameplayAttributeData(float defaultValue = 0)
@@ -247,11 +249,13 @@ namespace GameplayAbilities
 		public void OnAfterDeserialize()
 		{
 			if (string.IsNullOrEmpty(AttributeName))
+			{
 				return;
+			}
 
-			Attribute = TypeCache.GetTypesDerivedFrom<AttributeSet>()
-				.First(t => t.Name == AttributeName.Split('.').First())
-				.GetField(AttributeName.Split('.').Last(),
+			Type attributeSetType = TypeCache.GetTypesDerivedFrom<AttributeSet>()
+				.First(t => t.Name == AttributeName.Split('.').First());
+			Attribute = attributeSetType.GetField(AttributeName.Split('.').Last(),
 				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 		}
 	}

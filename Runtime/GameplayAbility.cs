@@ -76,8 +76,11 @@ namespace GameplayAbilities
 		[FoldoutGroup("Cooldowns")]
 		public GameplayEffect Cooldown;
 
-		protected bool IsActive;
-		protected bool IsAbilityEnding;
+		[HideInInspector]
+		public bool bIsActive;
+		[HideInInspector]
+		public bool IsAbilityEnding;
+
 		public bool IsBlockingOtherAbilities
 		{
 			get
@@ -162,7 +165,7 @@ namespace GameplayAbilities
 					return;
 				}
 
-				if (optionalRelevantTags != null)
+				if (optionalRelevantTags is not null)
 				{
 					if (!blocked)
 					{
@@ -184,7 +187,7 @@ namespace GameplayAbilities
 					return;
 				}
 
-				if (optionalRelevantTags != null)
+				if (optionalRelevantTags is not null)
 				{
 					if (!missing)
 					{
@@ -237,7 +240,7 @@ namespace GameplayAbilities
 
 			if (InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
 			{
-				IsActive = true;
+				bIsActive = true;
 				IsBlockingOtherAbilities = true;
 				IsCancelable = true;
 			}
@@ -263,7 +266,6 @@ namespace GameplayAbilities
 				return;
 			}
 
-
 			if (spec.ActiveCount < byte.MaxValue)
 			{
 				spec.ActiveCount++;
@@ -285,7 +287,6 @@ namespace GameplayAbilities
 		}
 
 		public virtual bool CommitAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, GameplayTagContainer optionalRelevantTags)
-
 		{
 			if (!CommitCheck(handle, actorInfo, optionalRelevantTags))
 			{
@@ -334,12 +335,12 @@ namespace GameplayAbilities
 			}
 
 			GameplayTagContainer cooldownTags = GetCooldownTags();
-			if (cooldownTags != null && !cooldownTags.IsEmpty())
+			if (cooldownTags is not null && !cooldownTags.IsEmpty())
 			{
 				AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
 				if (abilitySystemComponent != null && abilitySystemComponent.HasAnyMatchingGameplayTags(cooldownTags))
 				{
-					if (optionalRelevantTags != null)
+					if (optionalRelevantTags is not null)
 					{
 						GameplayTag failCooldownTag = AbilitySystemGlobals.Instance.ActivateFailCooldownTag;
 						if (failCooldownTag.IsValid())
@@ -421,7 +422,7 @@ namespace GameplayAbilities
 					IsAbilityEnding = true;
 				}
 
-				if (IsActive == false && InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
+				if (bIsActive == false && InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
 				{
 					return;
 				}
@@ -436,7 +437,7 @@ namespace GameplayAbilities
 
 				if (InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
 				{
-					IsActive = false;
+					bIsActive = false;
 					IsAbilityEnding = false;
 				}
 
@@ -462,7 +463,7 @@ namespace GameplayAbilities
 
 		public bool IsEndAbilityValid(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo)
 		{
-			if ((IsActive == false || IsAbilityEnding == true) && InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
+			if ((bIsActive == false || IsAbilityEnding == true) && InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
 			{
 				Debug.Log($"IsEndAbilityValid returning false on Ability {this} due to EndAbility being called multiple times");
 				return false;
@@ -476,7 +477,7 @@ namespace GameplayAbilities
 			}
 
 			GameplayAbilitySpec spec = abilityComp.FindAbilitySpecFromHandle(handle);
-			bool isSpecActive = spec is not null ? spec.IsActive : IsActive;
+			bool isSpecActive = spec is not null ? spec.IsActive : IsActive();
 
 			if (!isSpecActive)
 			{
@@ -533,7 +534,54 @@ namespace GameplayAbilities
 			return new ActiveGameplayEffectHandle();
 		}
 
-		public virtual GameplayEffectSpecHandle MakeOutgoingGameplayEffectSpec(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo, GameplayEffect gameplayEffect, int level)
+		public List<ActiveGameplayEffectHandle> ApplyGameplayEffectToTarget(in GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, in GameplayAbilityTargetDataHandle target, GameplayEffect gameplayEffect, float gameplayEffectLevel, int stack)
+		{
+			List<ActiveGameplayEffectHandle> effectHandles = new List<ActiveGameplayEffectHandle>();
+
+			if (gameplayEffect == null)
+			{
+				Debug.LogError($"ApplyGameplayEffectToTarget called on ability %s with no GameplayEffect.");
+			}
+			else
+			{
+				GameplayEffectSpecHandle specHandle = MakeOutgoingGameplayEffectSpec(handle, actorInfo, gameplayEffect, gameplayEffectLevel);
+				if (specHandle.Data != null)
+				{
+					specHandle.Data.StackCount = stack;
+					effectHandles.AddRange(ApplyGameplayEffectToTarget(handle, actorInfo, specHandle, target));
+				}
+				else
+				{
+					Debug.LogWarning($"GameplayAbility::ApplyGameplayEffectToTarget failed to create valid spec handle. Ability: %s");
+				}
+			}
+
+			return effectHandles;
+		}
+
+		public List<ActiveGameplayEffectHandle> ApplyGameplayEffectToTarget(in GameplayAbilitySpecHandle abilityHandle, in GameplayAbilityActorInfo actorInfo, in GameplayEffectSpecHandle specHandle, in GameplayAbilityTargetDataHandle targetData)
+		{
+			List<ActiveGameplayEffectHandle> effectHandles = new List<ActiveGameplayEffectHandle>();
+
+			if (specHandle.IsValid())
+			{
+				foreach (GameplayAbilityTargetData data in targetData.Data)
+				{
+					if (data != null)
+					{
+						effectHandles.AddRange(data.ApplyGameplayEffectSpec(specHandle.Data));
+					}
+					else
+					{
+						Debug.LogWarning($"ApplyGameplayEffectToTarget: Invalid target data: {data}");
+					}
+				}
+			}
+
+			return effectHandles;
+		}
+
+		public virtual GameplayEffectSpecHandle MakeOutgoingGameplayEffectSpec(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo, GameplayEffect gameplayEffect, float level)
 		{
 			if (actorInfo == null)
 			{
@@ -652,6 +700,21 @@ namespace GameplayAbilities
 		public virtual void OnRemoveAbility(GameplayAbilityActorInfo actorInfo, GameplayAbilitySpec spec)
 		{
 
+		}
+
+		public bool IsActive()
+		{
+			if (InstancingPolicy == GameplayAbilityInstancingPolicy.InstancedPerActor)
+			{
+				return bIsActive;
+			}
+
+			if (InstancingPolicy == GameplayAbilityInstancingPolicy.NonInstanced)
+			{
+				Debug.LogWarning($"GameplayAbility::IsActive() called on {this} NonInstanced ability, call IsActive on the Ability Spec instead");
+			}
+
+			return this != null;
 		}
 	}
 }

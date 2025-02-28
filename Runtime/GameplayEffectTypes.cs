@@ -144,6 +144,7 @@ namespace GameplayAbilities
         public AbilitySystemComponent InstigatorAbilitySystemComponent;
         public GameplayAbility AbilityCdo;
         public GameplayAbility AbilityInstanceNotReplicated;
+        public List<GameObject> Actors = new();
         public int AbilityLevel;
 
         public void AddInstigator(GameObject instigator, GameObject effectCauser)
@@ -172,6 +173,16 @@ namespace GameplayAbilities
             SourceObject = source_object;
         }
 
+        public void AddActors(List<GameObject> actors, bool reset = false)
+        {
+            if (reset && Actors.Count > 0)
+            {
+                Actors.Clear();
+            }
+
+            Actors.AddRange(actors);
+        }
+
         public void GetOwnedGameplayTags(GameplayTagContainer actor_tag_container, GameplayTagContainer spec_tag_container)
         {
             if (InstigatorAbilitySystemComponent != null)
@@ -180,9 +191,15 @@ namespace GameplayAbilities
             }
         }
 
-        public GameplayEffectContext Duplicate()
+        public virtual GameplayEffectContext Duplicate()
         {
-            GameplayEffectContext newContext = this;
+            GameplayEffectContext newContext = new GameplayEffectContext();
+            newContext.Instigator = Instigator;
+            newContext.EffectCauser = EffectCauser;
+            newContext.SourceObject = SourceObject;
+            newContext.InstigatorAbilitySystemComponent = InstigatorAbilitySystemComponent;
+            newContext.AbilityCdo = AbilityCdo;
+            newContext.AbilityInstanceNotReplicated = AbilityInstanceNotReplicated;
             return newContext;
         }
     }
@@ -251,6 +268,14 @@ namespace GameplayAbilities
             if (IsValid)
             {
                 Data.AddSourceObject(sourceObject);
+            }
+        }
+
+        public void AddActors(List<GameObject> actors, bool reset = false)
+        {
+            if (IsValid)
+            {
+                Data.AddActors(actors, reset);
             }
         }
 
@@ -416,7 +441,7 @@ namespace GameplayAbilities
         public bool SetTagCount(in GameplayTag tag, int newCount)
         {
             int existingCount = ExplicitTagCountMap.GetValueOrDefault(tag);
-            
+
             int countDelta = newCount - existingCount;
             if (countDelta != 0)
             {
@@ -760,13 +785,18 @@ namespace GameplayAbilities
         }
     }
 
-    public struct GameplayEffectSpecHandle
+    public struct GameplayEffectSpecHandle : ICloneable
     {
         public GameplayEffectSpec Data;
 
         public readonly bool IsValid()
         {
             return Data != null;
+        }
+
+        public object Clone()
+        {
+            return new GameplayEffectSpecHandle(Data);
         }
 
         public GameplayEffectSpecHandle(GameplayEffectSpec other)

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -70,6 +71,11 @@ namespace GameplayAbilities
 		public static bool IsEmpty<T>(this List<T> list)
 		{
 			return list.Count == 0;
+		}
+
+		public static List<T> DeepCopy<T>(this List<T> original) where T : ICloneable
+		{
+			return original.ConvertAll(item => (T)item.Clone());
 		}
 	}
 }

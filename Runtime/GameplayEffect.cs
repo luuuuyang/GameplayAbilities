@@ -165,6 +165,7 @@ namespace GameplayAbilities
 		}
 	}
 
+	[Serializable]
 	public struct SetByCallerFloat
 	{
 		public string DataName;
@@ -583,13 +584,29 @@ namespace GameplayAbilities
 		public float EvaluatedMagnitude;
 	}
 
-	public class GameplayEffectModifiedAttribute
+	public class GameplayEffectModifiedAttribute : ICloneable 
 	{
 		public GameplayAttribute Attribute;
 		public float TotalMagnitude;
-	}
 
-	public class GameplayEffectAttributeCaptureSpec
+		public GameplayEffectModifiedAttribute()
+		{
+			TotalMagnitude = 0;
+		}
+
+		public GameplayEffectModifiedAttribute(GameplayAttribute attribute, float totalMagnitude)
+		{
+			Attribute = attribute;
+			TotalMagnitude = totalMagnitude;
+		}
+
+        public object Clone()
+        {
+            return new GameplayEffectModifiedAttribute(Attribute, TotalMagnitude);
+        }
+    }
+
+	public class GameplayEffectAttributeCaptureSpec : ICloneable
 	{
 		public GameplayEffectAttributeCaptureDefinition BackingDefinition;
 		public Aggregator AttributeAggregator;
@@ -599,6 +616,11 @@ namespace GameplayAbilities
 			BackingDefinition = definition;
 			AttributeAggregator = new Aggregator();
 		}
+
+		public object Clone()
+        {
+            return new GameplayEffectAttributeCaptureSpec(BackingDefinition);
+        }
 
 		public bool HasValidCapture()
 		{
@@ -669,12 +691,34 @@ namespace GameplayAbilities
 			aggregatorToAddTo.AddModsFrom(AttributeAggregator);
 			return true;
 		}
-	}
+    }
 
 	public class GameplayEffectAttributeCaptureSpecContainer
 	{
-		public List<GameplayEffectAttributeCaptureSpec> SourceAttributes = new();
-		public List<GameplayEffectAttributeCaptureSpec> TargetAttributes = new();
+		private List<GameplayEffectAttributeCaptureSpec> SourceAttributes;
+		private List<GameplayEffectAttributeCaptureSpec> TargetAttributes;
+		private bool HasNonSnapshottedAttributes;
+
+		public GameplayEffectAttributeCaptureSpecContainer()
+		{
+			SourceAttributes = new();
+			TargetAttributes = new();
+			HasNonSnapshottedAttributes = false;
+		}
+
+		public GameplayEffectAttributeCaptureSpecContainer(in GameplayEffectAttributeCaptureSpecContainer other)
+		{
+			SourceAttributes = other.SourceAttributes.DeepCopy();
+			TargetAttributes = other.TargetAttributes.DeepCopy();
+			HasNonSnapshottedAttributes = other.HasNonSnapshottedAttributes;
+		}
+
+		public void CopyFrom(in GameplayEffectAttributeCaptureSpecContainer other)
+		{
+			SourceAttributes = other.SourceAttributes.DeepCopy();
+			TargetAttributes = other.TargetAttributes.DeepCopy();
+			HasNonSnapshottedAttributes = other.HasNonSnapshottedAttributes;
+		}
 
 		public GameplayEffectAttributeCaptureSpec FindCaptureSpecByDefinition(GameplayEffectAttributeCaptureDefinition definition, bool only_include_valid_capture)
 		{
@@ -756,7 +800,7 @@ namespace GameplayAbilities
 				captureSpec.UnregisterLinkedAggregatorCallbacks(handle);
 			}
 		}
-	}
+    }
 
 	public class GameplayEffectSpec
 	{
@@ -775,6 +819,7 @@ namespace GameplayAbilities
 		public bool CompletedSourceAttributeCapture;
 		public bool CompletedTargetAttributeCapture;
 		public bool DurationLocked;
+		public List<GameplayAbilitySpecDef> GrantedAbilitySpecs = new();
 		public Dictionary<string, float> SetByCallerNameMagnitudes = new();
 		public Dictionary<GameplayTag, float> SetByCallerTagMagnitudes = new();
 		public float Level;
@@ -799,6 +844,30 @@ namespace GameplayAbilities
 			DurationLocked = false;
 
 			Initialize(def, effectContext, level);
+		}
+
+		public GameplayEffectSpec(in GameplayEffectSpec other)
+		{
+			Def = other.Def;
+			ModifiedAttributes = other.ModifiedAttributes.DeepCopy();
+			CapturedRelevantAttributes.CopyFrom(other.CapturedRelevantAttributes);
+			TargetEffectSpecs = other.TargetEffectSpecs.DeepCopy();
+			Duration = other.Duration;
+			Period = other.Period;
+			CapturedSourceTags.CopyFrom(other.CapturedSourceTags);
+			CapturedTargetTags.CopyFrom(other.CapturedTargetTags);
+			DynamicGrantedTags.CopyFrom(other.DynamicGrantedTags);
+			DynamicAssetTags.CopyFrom(other.DynamicAssetTags);
+			Modifiers = other.Modifiers;
+			StackCount = other.StackCount;
+			CompletedSourceAttributeCapture = other.CompletedSourceAttributeCapture;
+			CompletedTargetAttributeCapture = other.CompletedTargetAttributeCapture;
+			DurationLocked = other.DurationLocked;
+			GrantedAbilitySpecs = other.GrantedAbilitySpecs;
+			SetByCallerNameMagnitudes = new Dictionary<string, float>(other.SetByCallerNameMagnitudes);
+			SetByCallerTagMagnitudes = new Dictionary<GameplayTag, float>(other.SetByCallerTagMagnitudes);
+			EffectContext = other.EffectContext;
+			Level = other.Level;
 		}
 
 		public void Initialize(in GameplayEffect def, in GameplayEffectContextHandle effectContext, float level)
@@ -839,22 +908,6 @@ namespace GameplayAbilities
 		{
 			SetByCallerNameMagnitudes = originalSpec.SetByCallerNameMagnitudes;
 			SetByCallerTagMagnitudes = originalSpec.SetByCallerTagMagnitudes;
-		}
-
-		public void SetSetByCallerMagnitude(string dataName, float magnitude)
-		{
-			if (!string.IsNullOrEmpty(dataName))
-			{
-				SetByCallerNameMagnitudes.TryAdd(dataName, magnitude);
-			}
-		}
-
-		public void SetSetByCallerMagnitude(GameplayTag dataTag, float magnitude)
-		{
-			if (dataTag.IsValid())
-			{
-				SetByCallerTagMagnitudes.TryAdd(dataTag, magnitude);
-			}
 		}
 
 		public void MergeSetByCallerMagnitude(in Dictionary<GameplayTag, float> magnitudes)
@@ -989,7 +1042,7 @@ namespace GameplayAbilities
 
 		public GameplayEffectModifiedAttribute AddModifiedAttribute(in GameplayAttribute attribute)
 		{
-			var modified_attribute = new GameplayEffectModifiedAttribute
+			GameplayEffectModifiedAttribute modified_attribute = new GameplayEffectModifiedAttribute
 			{
 				Attribute = attribute
 			};
@@ -1095,6 +1148,22 @@ namespace GameplayAbilities
 			return CapturedRelevantAttributes.HasValidCapturedAttributes(captureDefsToCheck);
 		}
 
+		public void SetSetByCallerMagnitude(string dataName, float magnitude)
+		{
+			if (!string.IsNullOrEmpty(dataName))
+			{
+				SetByCallerNameMagnitudes.TryAdd(dataName, magnitude);
+			}
+		}
+
+		public void SetSetByCallerMagnitude(GameplayTag dataTag, float magnitude)
+		{
+			if (dataTag.IsValid())
+			{
+				SetByCallerTagMagnitudes.TryAdd(dataTag, magnitude);
+			}
+		}
+
 		public float GetSetByCallerMagnitude(string dataName, bool warnIfNotFound, float defaultIfNotFound)
 		{
 			float magnitude = defaultIfNotFound;
@@ -1106,7 +1175,7 @@ namespace GameplayAbilities
 					if (warnIfNotFound)
 					{
 						Debug.LogError($"GameplayEffectSpec::GetMagnitude called for Data {dataName} on Def {Def} when magnitude had not yet been set by caller.");
-					}
+					}  
 				}
 			}
 
@@ -1407,6 +1476,11 @@ namespace GameplayAbilities
 		private List<DebugExecutedGameplayEffectData> DebugExecutedGameplayEffects = new();
 
 		private GameplayEffectModCallbackData CurrentModCallbackData;
+
+		public IEnumerator<ActiveGameplayEffect> GetEnumerator()
+		{
+			return GameplayEffects_Internal.GetEnumerator();
+		}
 
 		public void RegisterWithOwner(AbilitySystemComponent owner)
 		{

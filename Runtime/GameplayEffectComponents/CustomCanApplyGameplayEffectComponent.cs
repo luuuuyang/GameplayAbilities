@@ -5,6 +5,7 @@ namespace GameplayAbilities
 {
     public class CustomCanApplyGameplayEffectComponent : GameplayEffectComponent
     {
+        [SerializeReference]
         public List<GameplayEffectCustomApplicationRequirement> ApplicationRequirements = new();
 
         public override bool CanGameplayEffectApply(in ActiveGameplayEffectsContainer activeGEContainer, in GameplayEffectSpec GESpec)

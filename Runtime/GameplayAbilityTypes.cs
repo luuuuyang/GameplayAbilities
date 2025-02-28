@@ -20,9 +20,7 @@ namespace GameplayAbilities
     public class GameplayAbilityActorInfo
 	{
 		public GameObject OwnerActor;
-		//# The physical representation of the owner, used for targeting and animation. This will often be null!
 		public GameObject AvatarActor;
-		//# Ability System component associated with the owner actor, shouldn't be null
 		public AbilitySystemComponent AbilitySystemComponent;
 
 		public virtual void InitFromActor(GameObject ownerActor, GameObject avatarActor, AbilitySystemComponent abilitySystemComponent)
@@ -36,12 +34,17 @@ namespace GameplayAbilities
     public class GameplayEventData
     {
 		public GameplayTag EventTag;
-		public object Instigator;
-		public object Target;
+		public GameObject Instigator;
+		public GameObject Target;
+		public GameplayEffectContextHandle ContextHandle;
 		public GameplayTagContainer InstigatorTags;
 		public GameplayTagContainer TargetTags;
 		public float EventMagnitude;
+		public GameplayAbilityTargetDataHandle TargetData;
     }
+
+	public delegate void GameplayEventMulticastDelegate(in GameplayEventData data);
+	public delegate void GameplayEventTagMulticastDelegate(GameplayTag eventTag, in GameplayEventData data);
 
     public struct AbilityEndedData
 	{

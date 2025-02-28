@@ -1,12 +1,11 @@
+using System;
 using UnityEngine;
 
 namespace GameplayAbilities
 {
+    [Serializable]
     public abstract class GameplayEffectCustomApplicationRequirement
     {
-        public bool CanApplyGameplayEffect(in GameplayEffect gameplayEffect, in GameplayEffectSpec spec, AbilitySystemComponent ASC)
-        {
-            return true;
-        }
+        public abstract bool CanApplyGameplayEffect(in GameplayEffect gameplayEffect, in GameplayEffectSpec spec, AbilitySystemComponent ASC);
     }
 }
