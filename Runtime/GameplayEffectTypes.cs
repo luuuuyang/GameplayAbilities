@@ -2,13 +2,17 @@ using GameplayTags;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-
+using UnityEngine.Events;
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
 #endif
 
 namespace GameplayAbilities
 {
+    using OnGameplayAttributeChange = UnityEvent<float, GameplayEffectModCallbackData>;
+    
+    using OnGameplayAttributeValueChange = UnityEvent<OnAttributeChangeData>;
+
     public enum GameplayModEvaluationChannel
     {
         Channel0,
@@ -27,7 +31,6 @@ namespace GameplayAbilities
 
     public struct GameplayModEvaluationChannelSettings
     {
-
         public GameplayModEvaluationChannel Channel;
 
         public GameplayModEvaluationChannel EvaluationChannel
@@ -332,8 +335,6 @@ namespace GameplayAbilities
         public OnActiveGameplayEffectTimeChange OnTimeChanged;
         public OnActiveGameplayEffectInhibitionChanged OnInhibitionChanged;
     }
-
-    public delegate void OnGameplayAttributeChange(float newValue, in GameplayEffectModCallbackData modData);
 
     public struct OnAttributeChangeData
     {

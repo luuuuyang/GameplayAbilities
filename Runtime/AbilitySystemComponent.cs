@@ -5,9 +5,13 @@ using UnityEngine;
 using UnityEngine.Assertions;
 using System.Reflection;
 using System.Linq;
+using UnityEngine.Events;
 
 namespace GameplayAbilities
 {
+	using OnGameplayAttributeChange = UnityEvent<float, GameplayEffectModCallbackData>;
+	using OnGameplayAttributeValueChange = UnityEvent<OnAttributeChangeData>;
+
 	public delegate void AbilityFailedDelegate(in GameplayAbility ability, in GameplayTagContainer failureReason);
 	public delegate void AbilityEnded(in GameplayAbility ability);
 	public delegate void ImmunityBlockGE(in GameplayEffectSpec blockedSpec, in ActiveGameplayEffect immunityGameplayEffect);
@@ -689,6 +693,17 @@ namespace GameplayAbilities
 			}
 		}
 
+		public void CancelAbility(GameplayAbility ability)
+		{
+			foreach (GameplayAbilitySpec spec in ActivatableAbilities.Items)
+			{
+				if (spec.Ability == ability)
+				{
+					CancelAbilitySpec(spec, null);
+				}
+			}
+		}
+
 		public void CancelAbilities(in GameplayTagContainer withTags, in GameplayTagContainer withoutTags, GameplayAbility ignore)
 		{
 			foreach (GameplayAbilitySpec spec in ActivatableAbilities.Items)
@@ -1024,9 +1039,9 @@ namespace GameplayAbilities
 				return new GameplayAbilitySpec();
 			}
 
-			GameplayAbility abilityCDO = Instantiate(abilityClass);
+			GameplayAbility abilityCDO = abilityClass;
 
-			return new GameplayAbilitySpec(abilityCDO, level);
+			return new GameplayAbilitySpec(abilityClass, level);
 		}
 
 		protected virtual void OnGiveAbility(GameplayAbilitySpec spec)
@@ -1038,9 +1053,9 @@ namespace GameplayAbilities
 
 			GameplayAbility specAbility = spec.Ability;
 			bool instancedPerActor = specAbility.InstancingPolicy == GameplayAbilityInstancingPolicy.InstancedPerActor;
-			if (instancedPerActor)
+			if (instancedPerActor && specAbility.ReplicationPolicy == GameplayAbilityReplicationPolicy.ReplicateNo)
 			{
-				if (spec.ReplicatedInstances.Count == 0)
+				if (spec.NonReplicatedInstances.Count == 0)
 				{
 					CreateNewInstanceOfAbility(spec, specAbility);
 				}
@@ -1229,7 +1244,7 @@ namespace GameplayAbilities
 			}
 
 			GameplayAbility instancedAbility = spec.GetPrimaryInstance();
-			GameplayAbility abilitySource = instancedAbility ?? ability;
+			GameplayAbility abilitySource = instancedAbility != null ? instancedAbility : ability;
 
 			if (triggerEventData != null)
 			{
@@ -1400,7 +1415,7 @@ namespace GameplayAbilities
 			}
 
 			GameplayAbility instancedAbility = spec.GetPrimaryInstance();
-			GameplayAbility ability = instancedAbility ?? spec.Ability;
+			GameplayAbility ability = instancedAbility != null ? instancedAbility : spec.Ability;
 
 			if (ability == null)
 			{
@@ -1416,6 +1431,16 @@ namespace GameplayAbilities
 			tempEventData.EventTag = eventTag;
 
 			return InternalTryActivateAbility(handle, null, null, tempEventData);
+		}
+
+		public OnGameplayAttributeChange RegisterGameplayAttributeEvent(GameplayAttribute attribute)
+		{
+			return ActiveGameplayEffects.RegisterGameplayAttributeEvent(attribute);
+		}
+		
+		public OnGameplayAttributeValueChange GetGameplayAttributeValueChangeDelegate(GameplayAttribute attribute)
+		{
+			return ActiveGameplayEffects.GetGameplayAttributeValueChangeDelegate(attribute);
 		}
 	}
 }

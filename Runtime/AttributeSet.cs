@@ -231,6 +231,13 @@ namespace GameplayAbilities
 			return !(a == b);
 		}
 
+		public override bool Equals(object obj)
+		{
+			if (obj == null || !(obj is GameplayAttribute))
+				return false;
+			return Attribute == ((GameplayAttribute)obj).Attribute;
+		}
+
 		public override int GetHashCode()
 		{
 			return Attribute.GetHashCode();

@@ -62,6 +62,9 @@ namespace GameplayAbilities
 		public GameplayTagContainer AssetTags => AbilityTags;
 
 		[FoldoutGroup("Advanced")]
+		public GameplayAbilityReplicationPolicy ReplicationPolicy;
+		
+		[FoldoutGroup("Advanced")]
 		public GameplayAbilityInstancingPolicy InstancingPolicy;
 
 		[FoldoutGroup("Advanced")]
@@ -78,6 +81,7 @@ namespace GameplayAbilities
 
 		[HideInInspector]
 		public bool bIsActive;
+
 		[HideInInspector]
 		public bool IsAbilityEnding;
 

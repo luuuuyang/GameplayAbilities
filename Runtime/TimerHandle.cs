@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace GameplayAbilities
 {
-    public class TimerHandle : IEquatable<TimerHandle>
+    public struct TimerHandle : IEquatable<TimerHandle>
     {
         private const ushort IndexBits = 24;
         private const ushort SerialNumberBits = 40;

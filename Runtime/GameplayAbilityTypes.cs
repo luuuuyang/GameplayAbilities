@@ -1,3 +1,4 @@
+using System;
 using GameplayTags;
 using UnityEngine;
 
@@ -5,9 +6,16 @@ namespace GameplayAbilities
 {
     public enum GameplayAbilityInstancingPolicy
 	{
+		[Obsolete("Use InstancedPerActor as the default to avoid confusing corner cases")]
 		NonInstanced,
 		InstancedPerActor,
 		InstancedPerExecution
+	}
+
+	public enum GameplayAbilityReplicationPolicy
+	{
+		ReplicateNo,
+		ReplicateYes
 	}
 
 	public enum GameplayAbilityTriggerSource

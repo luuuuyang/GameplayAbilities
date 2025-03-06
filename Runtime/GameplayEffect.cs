@@ -5,6 +5,8 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Events;
+
 
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
@@ -12,6 +14,10 @@ using Sirenix.OdinInspector;
 
 namespace GameplayAbilities
 {
+	using OnGameplayAttributeChange = UnityEvent<float, GameplayEffectModCallbackData>;
+
+	using OnGameplayAttributeValueChange = UnityEvent<OnAttributeChangeData>;
+	
 	public enum GameplayEffectMagnitudeCalculation
 	{
 		ScalableFloat,
@@ -584,7 +590,7 @@ namespace GameplayAbilities
 		public float EvaluatedMagnitude;
 	}
 
-	public class GameplayEffectModifiedAttribute : ICloneable 
+	public class GameplayEffectModifiedAttribute : ICloneable
 	{
 		public GameplayAttribute Attribute;
 		public float TotalMagnitude;
@@ -600,11 +606,11 @@ namespace GameplayAbilities
 			TotalMagnitude = totalMagnitude;
 		}
 
-        public object Clone()
-        {
-            return new GameplayEffectModifiedAttribute(Attribute, TotalMagnitude);
-        }
-    }
+		public object Clone()
+		{
+			return new GameplayEffectModifiedAttribute(Attribute, TotalMagnitude);
+		}
+	}
 
 	public class GameplayEffectAttributeCaptureSpec : ICloneable
 	{
@@ -618,9 +624,9 @@ namespace GameplayAbilities
 		}
 
 		public object Clone()
-        {
-            return new GameplayEffectAttributeCaptureSpec(BackingDefinition);
-        }
+		{
+			return new GameplayEffectAttributeCaptureSpec(BackingDefinition);
+		}
 
 		public bool HasValidCapture()
 		{
@@ -691,7 +697,7 @@ namespace GameplayAbilities
 			aggregatorToAddTo.AddModsFrom(AttributeAggregator);
 			return true;
 		}
-    }
+	}
 
 	public class GameplayEffectAttributeCaptureSpecContainer
 	{
@@ -800,7 +806,7 @@ namespace GameplayAbilities
 				captureSpec.UnregisterLinkedAggregatorCallbacks(handle);
 			}
 		}
-    }
+	}
 
 	public class GameplayEffectSpec
 	{
@@ -1175,7 +1181,7 @@ namespace GameplayAbilities
 					if (warnIfNotFound)
 					{
 						Debug.LogError($"GameplayEffectSpec::GetMagnitude called for Data {dataName} on Def {Def} when magnitude had not yet been set by caller.");
-					}  
+					}
 				}
 			}
 
@@ -1452,14 +1458,14 @@ namespace GameplayAbilities
 		}
 	}
 
-	public delegate void OnGameplayAttributeValueChange(in OnAttributeChangeData data);
-
 	public class ActiveGameplayEffectsContainer
 	{
 		public AbilitySystemComponent Owner;
 		public OnGivenActiveGameplayEffectRemoved OnActiveGameplayEffectRemovedDelegate;
 		private List<ActiveGameplayEffect> GameplayEffects_Internal = new();
 		public Dictionary<GameplayAttribute, Aggregator> AttributeAggregatorMap = new();
+
+		[Obsolete("use AttributeValueChangeDelegates")]
 		private Dictionary<GameplayAttribute, OnGameplayAttributeChange> AttributeChangeDelegates = new();
 		private Dictionary<GameplayAttribute, OnGameplayAttributeValueChange> AttributeValueChangeDelegates = new();
 
@@ -1776,7 +1782,13 @@ namespace GameplayAbilities
 					return true;
 				}
 
-				Debug.Log($"InternalRemoveActiveGameplayEffect: Auth: {Owner.name} Handle: {effect.Handle} Def: {effect.Spec.Def}");
+				Debug.Log($"Removing: {effect}. NumToRemove: {stacksToRemove}");
+				foreach (GameplayModifierInfo modifier in effect.Spec.Def.Modifiers)
+				{
+					float magnitude = 0;
+					modifier.ModifierMagnitude.AttemptCalculateMagnitude(effect.Spec, ref magnitude);
+					Debug.Log($"{modifier.Attribute} {modifier.ModifierOp} {magnitude}");
+				}
 
 				GameplayEffectRemovalInfo gameplayEffectRemovalInfo;
 				gameplayEffectRemovalInfo.ActiveEffect = effect;
@@ -1813,6 +1825,7 @@ namespace GameplayAbilities
 				return modifiedArray;
 			}
 
+			Debug.LogWarning($"InternalRemoveActiveGameplayEffect called with invalid index: {index}");
 			return false;
 		}
 
@@ -2128,7 +2141,7 @@ namespace GameplayAbilities
 
 				if (AttributeChangeDelegates.TryGetValue(attribute, out OnGameplayAttributeChange legacyDelegate))
 				{
-					legacyDelegate(newValue, dataToShare);
+					legacyDelegate.Invoke(newValue, dataToShare);
 				}
 
 				if (AttributeValueChangeDelegates.TryGetValue(attribute, out OnGameplayAttributeValueChange newDelegate))
@@ -2140,7 +2153,7 @@ namespace GameplayAbilities
 						OldValue = oldValue,
 						GEModData = dataToShare
 					};
-					newDelegate(callbackData);
+					newDelegate.Invoke(callbackData);
 				}
 			}
 			CurrentModCallbackData = null;
@@ -2584,6 +2597,26 @@ namespace GameplayAbilities
 				}
 			}
 			return null;
+		}
+
+		public OnGameplayAttributeChange RegisterGameplayAttributeEvent(GameplayAttribute attribute)
+		{
+			if (!AttributeChangeDelegates.TryGetValue(attribute, out OnGameplayAttributeChange @delegate))
+			{
+				@delegate = new();
+				AttributeChangeDelegates.Add(attribute, @delegate);
+			}
+			return @delegate;
+		}
+
+		public OnGameplayAttributeValueChange GetGameplayAttributeValueChangeDelegate(GameplayAttribute attribute)
+		{
+			if (!AttributeValueChangeDelegates.TryGetValue(attribute, out OnGameplayAttributeValueChange @delegate))
+			{
+				@delegate = new();
+				AttributeValueChangeDelegates.Add(attribute, @delegate);
+			}
+			return @delegate;
 		}
 	}
 

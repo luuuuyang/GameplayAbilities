@@ -199,19 +199,16 @@ namespace GameplayAbilities.Tests
             TimerHandle handle = new();
             timerManager.SetTimer(ref handle, @delegate, 1f, false);
             yield return null;
-            Debug.Log(Time.deltaTime);
 
             Assert.IsTrue(MathfExtensions.IsNearlyEqual(timerManager.GetTimerRemaining(handle), 1f, 1E-02f), "First delegate time remaining is 1.0f");
 
             timerManager.SetTimer(ref handle, @delegate, 5f, false);
             yield return null;
-            Debug.Log(Time.deltaTime);
             Assert.IsTrue(MathfExtensions.IsNearlyEqual(timerManager.GetTimerRemaining(handle), 5f, 1E-02f), "Reset delegate time remaining is 5.0f");
 
             timerManager.SetTimer(ref handleOne, @delegate, 1f, true);
             timerManager.SetTimer(ref handleTwo, @delegate, 1.5f, true);
             yield return null;
-            Debug.Log(Time.deltaTime);
 
             Assert.IsTrue(timerManager.IsTimerActive(handleOne), "Handle One is active");
             Assert.IsTrue(timerManager.IsTimerActive(handleTwo), "Handle Two is active");
