@@ -88,6 +88,8 @@ namespace GameplayAbilities
 		protected float AbilityLastActivatedTime;
 		// protected Dictionary<GameplayAbilitySpecHandle, 
 
+		// private readonly object abilityLock = new object();
+
 		private void Awake()
 		{
 			ActiveGameplayEffects.RegisterWithOwner(this);
@@ -582,6 +584,7 @@ namespace GameplayAbilities
 
 			if (!SpawnedAttributes.Contains(attribute))
 			{
+				attribute.OwningActor = gameObject;
 				SpawnedAttributes.Add(attribute);
 			}
 		}
@@ -590,6 +593,7 @@ namespace GameplayAbilities
 		{
 			if (SpawnedAttributes.Remove(attribute))
 			{
+				attribute.OwningActor = null;
 			}
 		}
 
@@ -648,7 +652,19 @@ namespace GameplayAbilities
 
 			if (ability.InstancingPolicy == GameplayAbilityInstancingPolicy.InstancedPerExecution)
 			{
-				spec.NonReplicatedInstances.Remove(ability);
+				if (ability.ReplicationPolicy != GameplayAbilityReplicationPolicy.ReplicateNo)
+				{
+					spec.ReplicatedInstances.Remove(ability);
+				}
+				else
+				{
+					spec.NonReplicatedInstances.Remove(ability);
+				}
+			}
+
+			if (spec.RemoveAfterActivation && !spec.IsActive)
+			{
+				ClearAbility(handle);
 			}
 		}
 
@@ -695,8 +711,13 @@ namespace GameplayAbilities
 
 		public void CancelAbility(GameplayAbility ability)
 		{
-			foreach (GameplayAbilitySpec spec in ActivatableAbilities.Items)
+			// lock (abilityLock)
+			// {
+
+			// }
+			for (int i = 0; i < ActivatableAbilities.Items.Count; i++)
 			{
+				GameplayAbilitySpec spec = ActivatableAbilities.Items[i];
 				if (spec.Ability == ability)
 				{
 					CancelAbilitySpec(spec, null);
@@ -706,8 +727,9 @@ namespace GameplayAbilities
 
 		public void CancelAbilities(in GameplayTagContainer withTags, in GameplayTagContainer withoutTags, GameplayAbility ignore)
 		{
-			foreach (GameplayAbilitySpec spec in ActivatableAbilities.Items)
+			for (int i = 0; i < ActivatableAbilities.Items.Count; i++)
 			{
+				GameplayAbilitySpec spec = ActivatableAbilities.Items[i];
 				if (!spec.IsActive || spec.Ability == null)
 				{
 					continue;
@@ -733,6 +755,11 @@ namespace GameplayAbilities
 
 		public float GetNumericAttributeBase(in GameplayAttribute attribute)
 		{
+			if (attribute.IsSystemAttribute())
+			{
+				return 0;
+			}
+
 			return ActiveGameplayEffects.GetAttributeBaseValue(attribute);
 		}
 
@@ -763,7 +790,12 @@ namespace GameplayAbilities
 			return attribute.GetNumericValueChecked(attributeSetOrNull);
 		}
 
-		public void SetNumericAttribute_Internal(GameplayAttribute attribute, float newValue)
+		public void SetNumericAttributeBase(in GameplayAttribute attribute, float newValue)
+		{
+			ActiveGameplayEffects.SetAttributeBaseValue(attribute, newValue);
+		}
+
+		public void SetNumericAttribute_Internal(in GameplayAttribute attribute, float newValue)
 		{
 			AttributeSet attributeSet = GetAttributeSubobjectChecked(attribute.GetAttributeSetClass());
 			attribute.SetNumericValueChecked(newValue, attributeSet);
@@ -877,7 +909,7 @@ namespace GameplayAbilities
 				}
 				else
 				{
-
+					ClearAbility(abilitySpecHandle);
 				}
 			}
 		}
@@ -1324,8 +1356,9 @@ namespace GameplayAbilities
 
 		public void CancelAbilityHandle(in GameplayAbilitySpecHandle abilityHandle)
 		{
-			foreach (GameplayAbilitySpec spec in ActivatableAbilities.Items)
+			for (int i = 0; i < ActivatableAbilities.Items.Count; i++)
 			{
+				GameplayAbilitySpec spec = ActivatableAbilities.Items[i];
 				if (spec.Handle == abilityHandle)
 				{
 					CancelAbilitySpec(spec, null);
@@ -1433,11 +1466,12 @@ namespace GameplayAbilities
 			return InternalTryActivateAbility(handle, null, null, tempEventData);
 		}
 
+		[Obsolete("Use GetGameplayAttributeValueChangeDelegate instead")]
 		public OnGameplayAttributeChange RegisterGameplayAttributeEvent(GameplayAttribute attribute)
 		{
 			return ActiveGameplayEffects.RegisterGameplayAttributeEvent(attribute);
 		}
-		
+
 		public OnGameplayAttributeValueChange GetGameplayAttributeValueChangeDelegate(GameplayAttribute attribute)
 		{
 			return ActiveGameplayEffects.GetGameplayAttributeValueChangeDelegate(attribute);

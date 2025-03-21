@@ -17,7 +17,7 @@ namespace GameplayAbilities
 	using OnGameplayAttributeChange = UnityEvent<float, GameplayEffectModCallbackData>;
 
 	using OnGameplayAttributeValueChange = UnityEvent<OnAttributeChangeData>;
-	
+
 	public enum GameplayEffectMagnitudeCalculation
 	{
 		ScalableFloat,
@@ -146,18 +146,37 @@ namespace GameplayAbilities
 		}
 	}
 
+	[Serializable]
 	public class CustomCalculationBasedFloat
 	{
 		public GameplayModMagnitudeCalculation CalculationClassMagnitude;
 		public ScalableFloat Coefficient;
 		public ScalableFloat PreMultiplyAdditiveValue;
 		public ScalableFloat PostMultiplyAdditiveValue;
+		public AnimationCurve FinalLookupCurve;
+
+		public CustomCalculationBasedFloat()
+		{
+			Coefficient = new ScalableFloat(1);
+			PreMultiplyAdditiveValue = new ScalableFloat(0);
+			PostMultiplyAdditiveValue = new ScalableFloat(0);
+		}
 
 		public float CalculateMagnitude(in GameplayEffectSpec relevantSpec)
 		{
-			float magnitude = 0;
-			// CalculationClassMagnitude.CalculateMagnitude(relevantSpec, out magnitude);
-			return magnitude;
+			GameplayModMagnitudeCalculation calcCDO = CalculationClassMagnitude;
+
+			float customBaseValue = calcCDO.CalculateBaseMagnitude_Implementation(relevantSpec);
+
+			float specLvl = relevantSpec.Level;
+
+			float finalValue = Coefficient.GetValueAtLevel(specLvl) * (customBaseValue + PreMultiplyAdditiveValue.GetValueAtLevel(specLvl)) + PostMultiplyAdditiveValue.GetValueAtLevel(specLvl);
+			if (FinalLookupCurve != null)
+			{
+				finalValue = FinalLookupCurve.Evaluate(finalValue);
+			}
+
+			return finalValue;
 		}
 
 		public static bool operator ==(CustomCalculationBasedFloat a, CustomCalculationBasedFloat b)
@@ -351,6 +370,19 @@ namespace GameplayAbilities
 					// captureDefs.Add(CustomMagnitude.CalculationClassMagnitude.CaptureAttribute);
 					break;
 			}
+		}
+
+		public bool GetStaticMagnitudeIfPossible(float level, out float magnitude, in string contextString = null)
+		{
+			magnitude = 0;
+
+			if (MagnitudeCalculationType == GameplayEffectMagnitudeCalculation.ScalableFloat)
+			{
+				magnitude = ScalableFloatMagnitude.GetValueAtLevel(level);
+				return true;
+			}
+
+			return false;
 		}
 	}
 
@@ -2095,12 +2127,14 @@ namespace GameplayAbilities
 			if (isGameplayAttributeDataField)
 			{
 				var type = set.GetType();
-				var field = type.GetField(attribute.AttributeName.Split('.').Last(),
-				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+				var field = type.GetField(attribute.AttributeName.Split('.').Last(), BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 				GameplayAttributeData attributeData = field.GetValue(set) as GameplayAttributeData;
 
-				oldBaseValue = attributeData.BaseValue;
-				attributeData.BaseValue = newBaseValue;
+				if (attributeData != null)
+				{
+					oldBaseValue = attributeData.BaseValue;
+					attributeData.BaseValue = newBaseValue;
+				}
 			}
 			else
 			{

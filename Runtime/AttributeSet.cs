@@ -46,6 +46,16 @@ namespace GameplayAbilities
 		public GameplayAttribute(FieldInfo fieldInfo)
 		{
 			Attribute = fieldInfo;
+
+			if (fieldInfo != null)
+			{
+				AttributeName = $"{fieldInfo.DeclaringType.Name}.{fieldInfo.Name}";
+			}
+		}
+
+		public static implicit operator GameplayAttribute(FieldInfo fieldInfo)
+		{
+			return new GameplayAttribute(fieldInfo);
 		}
 
 		public bool IsValid()
@@ -279,21 +289,21 @@ namespace GameplayAbilities
 
 		}
 
-		public virtual void PreAttributeChange(GameplayAttribute attribute, float new_value)
+		public virtual void PreAttributeChange(GameplayAttribute attribute, float newValue)
 		{
 		}
 
-		public virtual void PostAttributeChange(GameplayAttribute attribute, float old_value, float new_value)
-		{
-
-		}
-
-		public virtual void PreAttributeBaseChange(GameplayAttribute attribute, float new_value)
+		public virtual void PostAttributeChange(GameplayAttribute attribute, float oldValue, float newValue)
 		{
 
 		}
 
-		public virtual void PostAttributeBaseChange(GameplayAttribute attribute, float old_value, float new_value)
+		public virtual void PreAttributeBaseChange(GameplayAttribute attribute, float newValue)
+		{
+
+		}
+
+		public virtual void PostAttributeBaseChange(GameplayAttribute attribute, float oldValue, float newValue)
 		{
 
 		}
@@ -301,6 +311,26 @@ namespace GameplayAbilities
 		public virtual void OnAttributeAggregatorCreated(GameplayAttribute attribute, Aggregator aggregator)
 		{
 
+		}
+
+		public GameObject OwningActor { get; set; }
+
+		public AbilitySystemComponent OwningAbilitySystemComponent
+		{
+			get
+			{
+				return AbilitySystemGlobals.GetAbilitySystemComponentFromActor(OwningActor);
+			}
+		}
+
+		public AbilitySystemComponent OwningAbilitySystemComponentChecked
+		{
+			get
+			{
+				AbilitySystemComponent result = OwningAbilitySystemComponent;
+				Debug.Assert(result != null);
+				return result;
+			}
 		}
 	}
 }

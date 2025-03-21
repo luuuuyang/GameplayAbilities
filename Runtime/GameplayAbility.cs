@@ -469,14 +469,14 @@ namespace GameplayAbilities
 		{
 			if ((bIsActive == false || IsAbilityEnding == true) && InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
 			{
-				Debug.Log($"IsEndAbilityValid returning false on Ability {this} due to EndAbility being called multiple times");
+				Debug.LogWarning($"IsEndAbilityValid returning false on Ability {this} due to EndAbility being called multiple times");
 				return false;
 			}
 
 			AbilitySystemComponent abilityComp = actorInfo != null ? actorInfo.AbilitySystemComponent : null;
 			if (abilityComp == null)
 			{
-				Debug.Log($"IsEndAbilityValid returning false on Ability {this} due to AbilitySystemComponent being invalid");
+				Debug.LogWarning($"IsEndAbilityValid returning false on Ability {this} due to AbilitySystemComponent being invalid");
 				return false;
 			}
 
@@ -485,7 +485,7 @@ namespace GameplayAbilities
 
 			if (!isSpecActive)
 			{
-				Debug.Log($"IsEndAbilityValid returning false on Ability {this} due to spec not being active");
+				Debug.LogWarning($"IsEndAbilityValid returning false on Ability {this} due to spec not being active");
 				return false;
 			}
 

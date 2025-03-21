@@ -2,13 +2,13 @@ using DesignPatterns;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Assertions;
 using UnityEngine.Events;
 
 
 namespace GameplayAbilities
 {
 	using TimerFunction = Action;
+
 	using TimerDynamicDelegate = UnityAction;
 	public delegate void TimerDelegate();
 
@@ -116,8 +116,12 @@ namespace GameplayAbilities
 		}
 	};
 
-	public class TimerManager : SingletonMonoBehaviour<TimerManager>
+	public class TimerManager : MonoBehaviour
 	{
+		public static TimerManager Instance { get; private set; }
+
+		public bool autoTick = true;
+
 		private SparseArray<TimerData> Timers = new();
 		private PriorityQueue<TimerHandle, double> ActiveTimerHeap = new();
 		private HashSet<TimerHandle> PausedTimerSet = new();
@@ -128,15 +132,6 @@ namespace GameplayAbilities
 		private int LastTickedFrame;
 		private static ulong LastAssignedSerialNumber;
 		private static int GuaranteeEngineTickDelay = 0;
-
-		protected void Update()
-		{
-			if (Time.deltaTime > 0.1F)
-			{
-				Debug.LogWarning("Time.deltaTime is greater than 0.1, this is not expected behavior");
-			}
-			Tick(Time.deltaTime);
-		}
 
 		public void SetTimer(ref TimerHandle handle, in TimerDelegate @delegate, float rate, bool loop, float firstDelay = -1)
 		{
@@ -191,6 +186,27 @@ namespace GameplayAbilities
 		public TimerHandle SetTimerForNextTick(in TimerFunction @delegate)
 		{
 			return InternalSetTimerForNextTick(new TimerUnifiedDelegate(@delegate));
+		}
+
+        protected void OnEnable()
+        {
+            if (Instance == null)
+            {
+                Instance = this;
+                DontDestroyOnLoad(gameObject);
+            }
+            else if (Instance != this)
+            {
+                Destroy(gameObject);
+            }
+        }
+
+        protected void Update()
+		{
+			if (autoTick)
+			{
+				Tick(Time.deltaTime);
+			}
 		}
 
 		public void ClearTimer(TimerHandle handle)
@@ -338,7 +354,7 @@ namespace GameplayAbilities
 					continue;
 				}
 
-				if (InternalTime > top.ExpireTime)
+				if (InternalTime >= top.ExpireTime)
 				{
 					CurrentlyExecutingTimer = ActiveTimerHeap.Dequeue();
 					top.Status = TimerStatus.Executing;
@@ -478,7 +494,7 @@ namespace GameplayAbilities
 				float firstDelay = timerParameters.FirstDelay >= 0 ? timerParameters.FirstDelay : rate;
 
 				TimerHandle newTimerHandle;
-				if (HasBeenTickedThisFrame())
+				if (HasBeenTickedThisFrame() || !autoTick)
 				{
 					newTimerData.ExpireTime = InternalTime + firstDelay;
 					newTimerData.Status = TimerStatus.Active;
@@ -500,8 +516,6 @@ namespace GameplayAbilities
 				handle.Invalidate();
 			}
 		}
-
-		
 
 		private TimerHandle InternalSetTimerForNextTick(TimerUnifiedDelegate @delegate)
 		{
@@ -636,7 +650,7 @@ namespace GameplayAbilities
 			timerData.TimerIndicesByObjectKey = timerIndicesByObjectKey;
 
 			int newIndex = Timers.Add(timerData);
-			
+
 			TimerHandle result = GenerateHandle(newIndex);
 			Timers[newIndex].Handle = result;
 
