@@ -2856,7 +2856,7 @@ namespace GameplayAbilities
 
 		public GameplayTagContainer BlockedAbilityTags => CachedBlockedAbilityTags;
 
-#if ODIN_INSPECTOR
+#if ODIN_INSPECTOR && UNITY_EDITOR
 		protected virtual void OnValidate()
 		{
 			ConvertAssetTagsComponent();

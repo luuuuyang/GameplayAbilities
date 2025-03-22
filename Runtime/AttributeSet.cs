@@ -2,9 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using UnityEditor;
 using UnityEngine;
-using UnityEngine.Assertions;
+using BeardPhantom.RuntimeTypeCache;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 #if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
@@ -28,7 +31,7 @@ namespace GameplayAbilities
 	}
 
 	[Serializable]
-	public class GameplayAttribute : ISerializationCallbackReceiver
+	public class GameplayAttribute/* : ISerializationCallbackReceiver*/
 	{
 #if ODIN_INSPECTOR
 		[LabelText("Attribute")]
@@ -78,12 +81,27 @@ namespace GameplayAbilities
 
 		public FieldInfo GetField()
 		{
+			if (string.IsNullOrEmpty(AttributeName))
+			{
+				return null;
+			}
+
+			foreach (var type in GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>())
+			{
+				Debug.Log("type: " + type.Name);
+			}
+
+			Type attributeSetType = GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>()
+				.First(t => t.Name == AttributeName.Split('.').First());
+			Attribute = attributeSetType.GetField(AttributeName.Split('.').Last(),
+				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
 			return Attribute;
 		}
 
 		public Type GetAttributeSetClass()
 		{
-			return TypeCache.GetTypesDerivedFrom<AttributeSet>()
+			return GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>()
 				.First(t => t.Name == Attribute.DeclaringType.Name);
 		}
 
@@ -97,6 +115,7 @@ namespace GameplayAbilities
 			return fieldInfo.FieldType == typeof(GameplayAttributeData);
 		}
 
+#if UNITY_EDITOR
 		public static List<string> CollectAttributeNames()
 		{
 			var attributeNames = new List<string>();
@@ -153,6 +172,7 @@ namespace GameplayAbilities
 
 			return attributeNames;
 		}
+#endif
 
 		public float GetNumericValue(AttributeSet attributeSet)
 		{
@@ -258,25 +278,30 @@ namespace GameplayAbilities
 			return string.IsNullOrEmpty(AttributeName) ? Attribute.Name : AttributeName;
 		}
 
-		public void OnBeforeSerialize()
-		{
-			// Debug.Log($"OnBeforeSerialize: {AttributeName}");
-		}
+		// public void OnBeforeSerialize()
+		// {
+		// 	// Debug.Log($"OnBeforeSerialize: {AttributeName}");
+		// }
 
-		public void OnAfterDeserialize()
-		{
-			if (string.IsNullOrEmpty(AttributeName))
-			{
-				return;
-			}
+		// public void OnAfterDeserialize()
+		// {
+		// 	if (string.IsNullOrEmpty(AttributeName))
+		// 	{
+		// 		return;
+		// 	}
 
-			Type attributeSetType = TypeCache.GetTypesDerivedFrom<AttributeSet>()
-				.First(t => t.Name == AttributeName.Split('.').First());
-			Attribute = attributeSetType.GetField(AttributeName.Split('.').Last(),
-				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-		}
+
+		// 	Type attributeSetType = GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>()
+		// 		.First(t => t.Name == AttributeName.Split('.').First());
+		// 	Attribute = attributeSetType.GetField(AttributeName.Split('.').Last(),
+		// 		BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+				
+
+		// 	Debug.Log("OnAfterDeserialize: " + attributeSetType + " " + Attribute);
+		// }
 	}
-
+	
+	[TypeCacheTarget]
 	public class AttributeSet : ScriptableObject
 	{
 		public virtual bool PreGameplayEffectExecute(GameplayEffectModCallbackData data)
