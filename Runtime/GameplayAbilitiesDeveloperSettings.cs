@@ -1,9 +1,13 @@
 using GameplayTags;
-using UnityEditor;
 using UnityEngine;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace GameplayAbilities
 {
+    [CreateAssetMenu(fileName = "GameplayAbilitiesDeveloperSettings", menuName = "GameplayAbilities/GameplayAbilitiesDeveloperSettings")]
     public class GameplayAbilitiesDeveloperSettings : ScriptableObject
     {
         public GameplayTag ActivateFailCanActivateAbilityTag;
@@ -15,23 +19,27 @@ namespace GameplayAbilities
 
         public static GameplayAbilitiesDeveloperSettings GetOrCreateSettings()
         {
-            MonoScript script = MonoScript.FromScriptableObject(CreateInstance<GameplayAbilitiesDeveloperSettings>());
-            string scriptPath = AssetDatabase.GetAssetPath(script);
-            string settingsPath = scriptPath.Replace("Runtime/GameplayAbilitiesDeveloperSettings.cs", "Editor/Config/" + GameplayTagSource.DefaultName);
+            // MonoScript script = MonoScript.FromScriptableObject(CreateInstance<GameplayAbilitiesDeveloperSettings>());
+            // string scriptPath = AssetDatabase.GetAssetPath(script);
+            // string settingsPath = scriptPath.Replace("Runtime/GameplayAbilitiesDeveloperSettings.cs", "Editor/Config/" + GameplayTagSource.DefaultName);
 
-            GameplayAbilitiesDeveloperSettings settings = AssetDatabase.LoadAssetAtPath<GameplayAbilitiesDeveloperSettings>(settingsPath);
-            if (settings == null)
-            {
-                settings = CreateInstance<GameplayAbilitiesDeveloperSettings>();
-                AssetDatabase.CreateAsset(settings, settingsPath);
-                AssetDatabase.SaveAssets();
-            }
+            // GameplayAbilitiesDeveloperSettings settings = AssetDatabase.LoadAssetAtPath<GameplayAbilitiesDeveloperSettings>(settingsPath);
+            // if (settings == null)
+            // {
+            //     settings = CreateInstance<GameplayAbilitiesDeveloperSettings>();
+            //     AssetDatabase.CreateAsset(settings, settingsPath);
+            //     AssetDatabase.SaveAssets();
+            // }
+            GameplayAbilitiesDeveloperSettings settings = Resources.Load<GameplayAbilitiesDeveloperSettings>("GameplayAbilitiesDeveloperSettings");
+
             return settings;
         }
 
+#if UNITY_EDITOR
         public static SerializedObject GetSerializedObject()
         {
             return new SerializedObject(GetOrCreateSettings());
         }
+#endif
     }
 }
