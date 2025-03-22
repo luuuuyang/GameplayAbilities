@@ -2,8 +2,7 @@
     "name": "Luuuuyang.GameplayAbilities",
     "rootNamespace": "",
     "references": [
-        "GUID:3c904597c18287341bf2531ab2635573",
-        "GUID:3c328cdb1d6439c4cb6401faa9a27b33"
+        "GUID:3c904597c18287341bf2531ab2635573"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

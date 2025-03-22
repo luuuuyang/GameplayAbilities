@@ -6,8 +6,7 @@
         "UnityEditor.TestRunner",
         "Unity.PerformanceTesting",
         "Luuuuyang.GameplayAbilities",
-        "Luuuyang.GameplayTags",
-        "Luuuuyang.DesignPatterns"
+        "Luuuyang.GameplayTags"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

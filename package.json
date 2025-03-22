@@ -10,8 +10,7 @@
   "dependencies": {
     "com.unity.test-framework": "1.4.5",
     "com.unity.test-framework.performance": "3.0.3",
-    "com.luuuuyang.gameplaytags": "1.0.0-exp",
-    "com.luuuuyang.designpatterns": "1.0.0-exp"
+    "com.luuuuyang.gameplaytags": "1.0.0-exp"
   },
   "keywords": [
     "gameplay",

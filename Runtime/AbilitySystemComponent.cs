@@ -1297,7 +1297,7 @@ namespace GameplayAbilities
 				{
 					if (InternalTryActivateAbilityFailureTags.IsEmpty())
 					{
-						InternalTryActivateAbilityFailureTags.AddTag(GameplayAbilitiesDeveloperSettings.instance.ActivateFailCanActivateAbilityTag);
+						InternalTryActivateAbilityFailureTags.AddTag(GameplayAbilitiesDeveloperSettings.GetOrCreateSettings().ActivateFailCanActivateAbilityTag);
 					}
 
 					NotifyAbilityFailed(handle, abilitySource, InternalTryActivateAbilityFailureTags);

@@ -1,12 +1,33 @@
-using DesignPatterns;
 using UnityEngine;
 using System.Collections.Generic;
 using GameplayTags;
 
 namespace GameplayAbilities
 {
-	public class AbilitySystemGlobals : Singleton<AbilitySystemGlobals>
+	public class AbilitySystemGlobals
 	{
+		public static AbilitySystemGlobals Instance
+		{
+			get
+			{
+				if (instance == null)
+				{
+					//ensure that only one thread can execute
+					lock (typeof(AbilitySystemGlobals))
+					{
+						if (instance == null)
+						{
+							instance = new();
+							// TODO
+						}
+					}
+				}
+				return instance;
+			}
+		}
+
+		private static AbilitySystemGlobals instance;
+
 		public bool IgnoreAbilitySystemCooldowns;
 		public bool IgnoreAbilitySystemCosts;
 
@@ -49,7 +70,7 @@ namespace GameplayAbilities
 
 		public virtual void SetCurrentAppliedGE(in GameplayEffectSpec spec)
 		{
-			
+
 		}
 	}
 }
