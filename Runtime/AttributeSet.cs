@@ -91,7 +91,7 @@ namespace GameplayAbilities
 
 		public bool IsValid()
 		{
-			return Attribute != null;
+			return Property != null;
 		}
 
 		public Type GetAttributeSetClass()
