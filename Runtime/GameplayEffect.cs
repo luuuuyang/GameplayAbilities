@@ -2085,7 +2085,7 @@ namespace GameplayAbilities
 
 				AttributeAggregatorMap.TryGetValue(attribute, out Aggregator aggregator);
 
-				if (GameplayAttribute.IsGameplayAttributeDataField(attribute.GetField()))
+				if (GameplayAttribute.IsGameplayAttributeDataField(attribute.Property))
 				{
 					var type = attributeSet.GetType();
 					var field = type.GetField(attribute.AttributeName.Split('.').Last(),
@@ -2123,7 +2123,7 @@ namespace GameplayAbilities
 
 			set.PreAttributeBaseChange(attribute, newBaseValue);
 
-			bool isGameplayAttributeDataField = GameplayAttribute.IsGameplayAttributeDataField(attribute.GetField());
+			bool isGameplayAttributeDataField = GameplayAttribute.IsGameplayAttributeDataField(attribute.Property);
 			if (isGameplayAttributeDataField)
 			{
 				var type = set.GetType();

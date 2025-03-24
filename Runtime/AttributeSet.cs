@@ -7,6 +7,8 @@ using BeardPhantom.RuntimeTypeCache;
 
 #if UNITY_EDITOR
 using UnityEditor;
+using Mono.CSharp;
+
 #endif
 
 #if ODIN_INSPECTOR
@@ -39,21 +41,47 @@ namespace GameplayAbilities
 #endif
 		public string AttributeName;
 
+		public FieldInfo Property
+		{
+			get
+			{
+				if (string.IsNullOrEmpty(AttributeName))
+				{
+					return null;
+				}
+				if (Attribute == null)
+				{
+					Type attributeSetType = GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>()
+										.First(t => t.Name == AttributeName.Split('.').First());
+					Attribute = attributeSetType.GetField(AttributeName.Split('.').Last(),
+						BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+				}
+				return Attribute;
+			}
+			set
+			{
+				Attribute = value;
+				if (value != null)
+				{
+					AttributeName = $"{value.DeclaringType.Name}.{value.Name}";
+				}
+				else
+				{
+					AttributeName = null;
+				}
+			}
+		}
+
 		private FieldInfo Attribute;
 
 		public GameplayAttribute()
 		{
-			Attribute = null;
+			Property = null;
 		}
 
 		public GameplayAttribute(FieldInfo fieldInfo)
 		{
-			Attribute = fieldInfo;
-
-			if (fieldInfo != null)
-			{
-				AttributeName = $"{fieldInfo.DeclaringType.Name}.{fieldInfo.Name}";
-			}
+			Property = fieldInfo;
 		}
 
 		public static implicit operator GameplayAttribute(FieldInfo fieldInfo)
@@ -66,43 +94,10 @@ namespace GameplayAbilities
 			return Attribute != null;
 		}
 
-		public void SetField(FieldInfo fieldInfo)
-		{
-			Attribute = fieldInfo;
-			if (fieldInfo != null)
-			{
-				AttributeName = $"{fieldInfo.DeclaringType.Name}.{fieldInfo.Name}";
-			}
-			else
-			{
-				AttributeName = null;
-			}
-		}
-
-		public FieldInfo GetField()
-		{
-			if (string.IsNullOrEmpty(AttributeName))
-			{
-				return null;
-			}
-
-			foreach (var type in GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>())
-			{
-				Debug.Log("type: " + type.Name);
-			}
-
-			Type attributeSetType = GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>()
-				.First(t => t.Name == AttributeName.Split('.').First());
-			Attribute = attributeSetType.GetField(AttributeName.Split('.').Last(),
-				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-
-			return Attribute;
-		}
-
 		public Type GetAttributeSetClass()
 		{
 			return GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>()
-				.First(t => t.Name == Attribute.DeclaringType.Name);
+				.First(t => t.Name == Property.DeclaringType.Name);
 		}
 
 		public bool IsSystemAttribute()
@@ -253,7 +248,7 @@ namespace GameplayAbilities
 
 		public static bool operator ==(GameplayAttribute a, GameplayAttribute b)
 		{
-			return a.Attribute == b.Attribute;
+			return a.Property == b.Property;
 		}
 
 		public static bool operator !=(GameplayAttribute a, GameplayAttribute b)
@@ -265,17 +260,17 @@ namespace GameplayAbilities
 		{
 			if (obj == null || !(obj is GameplayAttribute))
 				return false;
-			return Attribute == ((GameplayAttribute)obj).Attribute;
+			return Property == ((GameplayAttribute)obj).Property;
 		}
 
 		public override int GetHashCode()
 		{
-			return Attribute.GetHashCode();
+			return Property.GetHashCode();
 		}
 
 		public string GetName()
 		{
-			return string.IsNullOrEmpty(AttributeName) ? Attribute.Name : AttributeName;
+			return string.IsNullOrEmpty(AttributeName) ? Property.Name : AttributeName;
 		}
 
 		// public void OnBeforeSerialize()
@@ -295,12 +290,12 @@ namespace GameplayAbilities
 		// 		.First(t => t.Name == AttributeName.Split('.').First());
 		// 	Attribute = attributeSetType.GetField(AttributeName.Split('.').Last(),
 		// 		BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-				
+
 
 		// 	Debug.Log("OnAfterDeserialize: " + attributeSetType + " " + Attribute);
 		// }
 	}
-	
+
 	[TypeCacheTarget]
 	public class AttributeSet : ScriptableObject
 	{

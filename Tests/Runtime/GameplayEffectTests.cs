@@ -283,10 +283,12 @@ namespace GameplayAbilities.Tests
 
         private void AddModifier(GameplayEffect effect, FieldInfo fieldInfo, GameplayModOp op, float value)
         {
-            GameplayModifierInfo modifier = new();
-            modifier.ModifierOp = op;
-            modifier.ModifierMagnitude = new GameplayEffectModifierMagnitude(new ScalableFloat(value));
-            modifier.Attribute.SetField(fieldInfo);
+            GameplayModifierInfo modifier = new()
+            {
+                ModifierOp = op,
+                ModifierMagnitude = new GameplayEffectModifierMagnitude(new ScalableFloat(value))
+            };
+            modifier.Attribute.Property = fieldInfo;
             effect.Modifiers.Add(modifier);
         }
     }

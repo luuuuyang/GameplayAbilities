@@ -31,7 +31,7 @@ namespace GameplayAbilities.Tests
         public override void PostGameplayEffectExecute(GameplayEffectModCallbackData data)
         {
             FieldInfo damageField = typeof(AbilitySystemTestAttributeSet).GetField("Damage");
-            FieldInfo modifiedField = data.EvaluatedData.Attribute.GetField();
+            FieldInfo modifiedField = data.EvaluatedData.Attribute.Property;
             if (damageField == modifiedField)
             {
                 if (data.EffectSpec.CapturedSourceTags.AggregatedTags.HasTag(GameplayTag.RequestGameplayTag("FireDamage")))
