@@ -1476,5 +1476,30 @@ namespace GameplayAbilities
 		{
 			return ActiveGameplayEffects.GetGameplayAttributeValueChangeDelegate(attribute);
 		}
+
+		public int RemoveActiveEffectsWithTags(GameplayTagContainer tags)
+		{
+			return RemoveActiveEffects(GameplayEffectQuery.MakeQuery_MatchAnyEffectTags(tags));
+		}
+
+		public int RemoveActiveEffectsWithSourceTags(GameplayTagContainer tags)
+		{
+			return RemoveActiveEffects(GameplayEffectQuery.MakeQuery_MatchAnySourceSpecTags(tags));
+		}
+
+		public int RemoveActiveEffectsWithAppliedTags(GameplayTagContainer tags)
+		{
+			return RemoveActiveEffects(GameplayEffectQuery.MakeQuery_MatchAnyOwningTags(tags));
+		}
+
+		public int RemoveActiveEffectsWithGrantedTags(GameplayTagContainer tags)
+		{
+			return RemoveActiveEffects(GameplayEffectQuery.MakeQuery_MatchAnyOwningTags(tags));
+		}
+
+		public virtual int RemoveActiveEffects(in GameplayEffectQuery query, int stacksToRemove = -1)
+		{
+			return ActiveGameplayEffects.RemoveActiveEffects(query, stacksToRemove);
+		}
 	}
 }
