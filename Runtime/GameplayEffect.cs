@@ -1274,10 +1274,10 @@ namespace GameplayAbilities
 	[Serializable]
 	public class GameplayEffectQuery
 	{
-		public GameplayTagQuery OwningTagQuery;
-		public GameplayTagQuery EffectTagQuery;
-		public GameplayTagQuery SourceTagQuery;
-		public GameplayTagQuery SourceAggregateTagQuery;
+		public GameplayTagQuery OwningTagQuery = new();
+		public GameplayTagQuery EffectTagQuery = new();
+		public GameplayTagQuery SourceTagQuery = new();
+		public GameplayTagQuery SourceAggregateTagQuery = new();
 		public GameplayAttribute ModifyingAttribute;
 		public GameObject EffectSource;
 		public GameplayEffect EffectDefinition;
