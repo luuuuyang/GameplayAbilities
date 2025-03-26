@@ -11,7 +11,7 @@ namespace GameplayAbilities
 		public GameplayAbility Ability;
 		public ScalableFloat LevelScalableFloat;
 		public GameplayEffectGrantedAbilityRemovePolicy RemovePolicy;
-		public object SourceObject;
+		public UnityEngine.Object SourceObject;
 		public Dictionary<GameplayTag, float> SetByCallerTagMagnitudes;
 		public GameplayAbilitySpecHandle AssignedHandle;
 
@@ -54,7 +54,7 @@ namespace GameplayAbilities
 		}
 		private List<GameplayAbility> _AbilityInstances;
 
-		public object SourceObject;
+		public UnityEngine.Object SourceObject;
 		// A count of the number of times this ability has been activated minus the number of times it has been ended. For instanced abilities this will be the number of currently active instances. Can't replicate until prediction accurately handles this.
 		public int ActiveCount;
 		public bool RemoveAfterActivation;

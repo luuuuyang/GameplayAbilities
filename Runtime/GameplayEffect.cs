@@ -1278,8 +1278,8 @@ namespace GameplayAbilities
 		public GameplayTagQuery EffectTagQuery = new();
 		public GameplayTagQuery SourceTagQuery = new();
 		public GameplayTagQuery SourceAggregateTagQuery = new();
-		public GameplayAttribute ModifyingAttribute;
-		public GameObject EffectSource;
+		public GameplayAttribute ModifyingAttribute = new();
+		public UnityEngine.Object EffectSource;
 		public GameplayEffect EffectDefinition;
 		public ActiveGameplayEffectQueryCustomMatch CustomMatchDelegate;
 		public List<ActiveGameplayEffectHandle> IgnoreHandles = new();

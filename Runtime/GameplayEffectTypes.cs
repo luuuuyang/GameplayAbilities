@@ -143,7 +143,7 @@ namespace GameplayAbilities
     {
         public GameObject Instigator;
         public GameObject EffectCauser;
-        public object SourceObject;
+        public UnityEngine.Object SourceObject;
         public AbilitySystemComponent InstigatorAbilitySystemComponent;
         public GameplayAbility AbilityCdo;
         public GameplayAbility AbilityInstanceNotReplicated;
@@ -171,9 +171,9 @@ namespace GameplayAbilities
             AbilityLevel = ability.GetAbilityLevel();
         }
 
-        public void AddSourceObject(object source_object)
+        public void AddSourceObject(UnityEngine.Object sourceObject)
         {
-            SourceObject = source_object;
+            SourceObject = sourceObject;
         }
 
         public void AddActors(List<GameObject> actors, bool reset = false)
@@ -254,7 +254,7 @@ namespace GameplayAbilities
             }
         }
 
-        public readonly object SourceObject
+        public readonly UnityEngine.Object SourceObject
         {
             get
             {
@@ -266,7 +266,7 @@ namespace GameplayAbilities
             }
         }
 
-        public void AddSourceObject(object sourceObject)
+        public void AddSourceObject(UnityEngine.Object sourceObject)
         {
             if (IsValid)
             {
