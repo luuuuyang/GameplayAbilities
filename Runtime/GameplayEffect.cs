@@ -1281,9 +1281,8 @@ namespace GameplayAbilities
 		public GameplayAttribute ModifyingAttribute;
 		public GameObject EffectSource;
 		public GameplayEffect EffectDefinition;
-
 		public ActiveGameplayEffectQueryCustomMatch CustomMatchDelegate;
-		public List<ActiveGameplayEffectHandle> IgnoreHandles;
+		public List<ActiveGameplayEffectHandle> IgnoreHandles = new();
 
 		public bool IsEmpty()
 		{
