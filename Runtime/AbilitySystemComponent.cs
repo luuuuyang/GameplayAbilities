@@ -1197,13 +1197,74 @@ namespace GameplayAbilities
 			}
 		}
 
-		public void GetAllAbilities(List<GameplayAbilitySpecHandle> abilityHandles)
+		public void GetAllAbilities(out List<GameplayAbilitySpecHandle> abilityHandles)
 		{
-			abilityHandles.Clear();
+			abilityHandles = new List<GameplayAbilitySpecHandle>(ActivatableAbilities.Items.Count);
 
 			foreach (GameplayAbilitySpec spec in ActivatableAbilities.Items)
 			{
 				abilityHandles.Add(spec.Handle);
+			}
+		}
+
+		public void FindAllAbilitiesWithTags(out List<GameplayAbilitySpecHandle> abilityHandles, GameplayTagContainer tags, bool exactMatch = true)
+		{
+			abilityHandles = new List<GameplayAbilitySpecHandle>();
+
+			foreach (GameplayAbilitySpec currentSpec in ActivatableAbilities.Items)
+			{
+				if (currentSpec.Ability == null)
+				{
+					continue;
+				}
+
+				GameplayAbility abilityInstance = currentSpec.GetPrimaryInstance();
+
+				if (abilityInstance == null)
+				{
+					abilityInstance = currentSpec.Ability;
+				}
+
+				if (abilityInstance != null)
+				{
+					if (exactMatch)
+					{
+						if (abilityInstance.AssetTags.HasAll(tags))
+						{
+							abilityHandles.Add(currentSpec.Handle);
+						}
+					}
+					else
+					{
+						if (abilityInstance.AssetTags.HasAny(tags))
+						{
+							abilityHandles.Add(currentSpec.Handle);
+						}
+					}
+				}
+			}
+		}
+
+		public void FindAllAbilitiesMatchingQuery(out List<GameplayAbilitySpecHandle> abilityHandles, GameplayTagQuery query)
+		{
+			abilityHandles = new List<GameplayAbilitySpecHandle>();
+
+			foreach (GameplayAbilitySpec currentSpec in ActivatableAbilities.Items)
+			{
+				GameplayAbility abilityInstance = currentSpec.GetPrimaryInstance();
+
+				if (abilityInstance == null)
+				{
+					abilityInstance = currentSpec.Ability;
+				}
+
+				if (abilityInstance != null)
+				{
+					if (abilityInstance.AssetTags.MatchesQuery(query))
+					{
+						abilityHandles.Add(currentSpec.Handle);
+					}
+				}
 			}
 		}
 

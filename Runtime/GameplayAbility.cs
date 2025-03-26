@@ -140,7 +140,6 @@ namespace GameplayAbilities
 
 			AbilitySystemGlobals abilitySystemGlobals = AbilitySystemGlobals.Instance;
 			if (abilitySystemGlobals.ShouldIgnoreCooldowns && !CheckCooldown(handle, actorInfo, optionalRelevantTags))
-
 			{
 				return false;
 			}
@@ -158,7 +157,7 @@ namespace GameplayAbilities
 			return true;
 		}
 
-		public virtual bool DoesAbilitySatisfyTagRequirements(AbilitySystemComponent abilitySystemComponent, in GameplayTagContainer sourceTags, in GameplayTagContainer targetTags, GameplayTagContainer optionalRelevantTags)
+		public virtual bool DoesAbilitySatisfyTagRequirements(in AbilitySystemComponent abilitySystemComponent, in GameplayTagContainer sourceTags, in GameplayTagContainer targetTags, GameplayTagContainer optionalRelevantTags)
 		{
 			optionalRelevantTags = new GameplayTagContainer();
 			bool blocked = false;

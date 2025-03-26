@@ -97,8 +97,7 @@ namespace GameplayAbilities.Tests
             var abilitySpec = sourceASC.FindAbilitySpecFromHandle(givenAbilitySpecHandle);
 
             // Verify ability was given
-            var gameplayAbilitySpecHandles = new List<GameplayAbilitySpecHandle>();
-            sourceASC.GetAllAbilities(gameplayAbilitySpecHandles);
+            sourceASC.GetAllAbilities(out List<GameplayAbilitySpecHandle> gameplayAbilitySpecHandles);
             bool hasAbility = gameplayAbilitySpecHandles.Count > 0;
             bool hasCorrectAbility = hasAbility && gameplayAbilitySpecHandles[0] == givenAbilitySpecHandle;
             Assert.IsTrue(hasCorrectAbility, "GiveAbility");
@@ -135,8 +134,7 @@ namespace GameplayAbilities.Tests
             var givenAbilitySpecHandle = sourceASC.GiveAbility(tempAbilitySpec);
             var abilitySpec = sourceASC.FindAbilitySpecFromHandle(givenAbilitySpecHandle);
 
-            List<GameplayAbilitySpecHandle> gameplayAbilitySpecHandles = new List<GameplayAbilitySpecHandle>();
-            sourceASC.GetAllAbilities(gameplayAbilitySpecHandles);
+            sourceASC.GetAllAbilities(out List<GameplayAbilitySpecHandle> gameplayAbilitySpecHandles);
             bool hasAbility = gameplayAbilitySpecHandles.Count > 0;
             bool hasCorrectAbility = hasAbility && gameplayAbilitySpecHandles[0] == givenAbilitySpecHandle;
             Assert.IsTrue(hasCorrectAbility, "GiveAbility");
