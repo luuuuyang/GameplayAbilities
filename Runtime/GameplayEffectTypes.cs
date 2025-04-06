@@ -508,6 +508,7 @@ namespace GameplayAbilities
         {
             if (!GameplayTagEventMap.TryGetValue(gameplayTag, out DelegateInfo info))
             {
+                info = new DelegateInfo();
                 GameplayTagEventMap.Add(gameplayTag, info);
             }
 
