@@ -3,16 +3,11 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
-#if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
-#endif
+
 
 namespace GameplayAbilities
 {
-    using OnGameplayAttributeChange = UnityEvent<float, GameplayEffectModCallbackData>;
-    
-    using OnGameplayAttributeValueChange = UnityEvent<OnAttributeChangeData>;
-
     public enum GameplayModEvaluationChannel
     {
         Channel0,
@@ -336,6 +331,8 @@ namespace GameplayAbilities
         public OnActiveGameplayEffectInhibitionChanged OnInhibitionChanged;
     }
 
+    public class OnGameplayAttributeChange : UnityEvent<float, GameplayEffectModCallbackData> { }
+
     public struct OnAttributeChangeData
     {
         public GameplayAttribute Attribute;
@@ -344,13 +341,15 @@ namespace GameplayAbilities
         public GameplayEffectModCallbackData GEModData;
     }
 
+    public class OnGameplayAttributeValueChange : UnityEvent<OnAttributeChangeData> { }
+
     public enum GameplayTagEventType
     {
         NewOrRemoved,
         AnyCountChange
     }
 
-    public delegate void OnGameplayEffectTagCountChanged(GameplayTag tag, int count_delta);
+    [Serializable] public class OnGameplayEffectTagCountChanged : UnityEvent<GameplayTag, int> { }
     public delegate void DeferredTagChangeDelegate();
 
     public class GameplayTagCountContainer
@@ -369,10 +368,10 @@ namespace GameplayAbilities
 
         public GameplayTagContainer ExplicitTags = new();
 
-        public struct DelegateInfo
+        public class DelegateInfo
         {
-            public OnGameplayEffectTagCountChanged OnNewOrRemove;
-            public OnGameplayEffectTagCountChanged OnAnyChange;
+            public OnGameplayEffectTagCountChanged OnNewOrRemove = new();
+            public OnGameplayEffectTagCountChanged OnAnyChange = new();
         }
 
         public void Notify_StackCountChange(in GameplayTag tag)
@@ -463,8 +462,6 @@ namespace GameplayAbilities
         }
 
         public void UpdateTagCount(in GameplayTagContainer container, in int countDelta)
-
-
         {
             if (countDelta != 0)
             {

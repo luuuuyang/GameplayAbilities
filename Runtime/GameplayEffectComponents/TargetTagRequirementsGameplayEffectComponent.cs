@@ -2,6 +2,7 @@ using GameplayTags;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace GameplayAbilities
 {
@@ -52,14 +53,15 @@ namespace GameplayAbilities
 				gameplayTagsToBind.AppendUnique(RemovalTagRequirements.RequireTags.GameplayTags);
 				gameplayTagsToBind.AppendUnique(OngoingTagRequirements.TagQuery.TagDictionary);
 
-				List<Tuple<GameplayTag, OnGameplayEffectTagCountChanged>> allBoundEvents = new();
+				List<Tuple<GameplayTag, UnityAction<GameplayTag, int>>> allBoundEvents = new();
 				foreach (GameplayTag tag in gameplayTagsToBind)
 				{
 					OnGameplayEffectTagCountChanged onTagEvent = ASC.RegisterGameplayTagEvent(tag, GameplayTagEventType.NewOrRemoved);
-					OnGameplayEffectTagCountChanged handle = (tag, newCount) =>
+					void handle(GameplayTag gameplayTag, int newCount)
 					{
-						OnTagChanged(tag, newCount, activeGEHandle);
-					};
+						OnTagChanged(gameplayTag, newCount, activeGEHandle);
+					}
+					onTagEvent.AddListener(handle);
 					allBoundEvents.Add(new(tag, handle));
 				}
 
@@ -76,7 +78,7 @@ namespace GameplayAbilities
 			return OngoingTagRequirements.RequirementsMet(tagContainer);
 		}
 
-		public virtual void OnGameplayEffectRemoved(in GameplayEffectRemovalInfo GERemovalInfo, AbilitySystemComponent ASC, List<Tuple<GameplayTag, OnGameplayEffectTagCountChanged>> allBoundEvents)
+		public virtual void OnGameplayEffectRemoved(in GameplayEffectRemovalInfo GERemovalInfo, AbilitySystemComponent ASC, List<Tuple<GameplayTag, UnityAction<GameplayTag, int>>> allBoundEvents)
 		{
 			foreach (var tag in allBoundEvents)
 			{

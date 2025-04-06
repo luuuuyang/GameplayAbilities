@@ -9,9 +9,6 @@ using UnityEngine.Events;
 
 namespace GameplayAbilities
 {
-	using OnGameplayAttributeChange = UnityEvent<float, GameplayEffectModCallbackData>;
-	using OnGameplayAttributeValueChange = UnityEvent<OnAttributeChangeData>;
-
 	public delegate void AbilityFailedDelegate(in GameplayAbility ability, in GameplayTagContainer failureReason);
 	public delegate void AbilityEnded(in GameplayAbility ability);
 	public delegate void ImmunityBlockGE(in GameplayEffectSpec blockedSpec, in ActiveGameplayEffect immunityGameplayEffect);
@@ -360,7 +357,7 @@ namespace GameplayAbilities
 			ActiveGameplayEffects.CheckDuration(handle);
 		}
 
-		#region GameplayTags
+		#region GameplayTags 
 
 		public bool HasMatchingGameplayTag(GameplayTag tagToCheck)
 		{
@@ -454,10 +451,10 @@ namespace GameplayAbilities
 			return GameplayTagCountContainer.RegisterGameplayTagEvent(tag, eventType);
 		}
 
-		public bool UnregisterGameplayTagEvent(OnGameplayEffectTagCountChanged @delegate, GameplayTag tag, GameplayTagEventType eventType = GameplayTagEventType.NewOrRemoved)
+		public bool UnregisterGameplayTagEvent(UnityAction<GameplayTag, int> @delegate, GameplayTag tag, GameplayTagEventType eventType = GameplayTagEventType.NewOrRemoved)
 		{
 			var de = GameplayTagCountContainer.RegisterGameplayTagEvent(tag, eventType);
-			de -= @delegate;
+			de.RemoveListener(@delegate);
 			return de == null;
 		}
 

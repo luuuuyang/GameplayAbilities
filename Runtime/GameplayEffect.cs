@@ -5,19 +5,10 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Events;
-
-
-#if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
-#endif
 
 namespace GameplayAbilities
 {
-	using OnGameplayAttributeChange = UnityEvent<float, GameplayEffectModCallbackData>;
-
-	using OnGameplayAttributeValueChange = UnityEvent<OnAttributeChangeData>;
-
 	public enum GameplayEffectMagnitudeCalculation
 	{
 		ScalableFloat,
