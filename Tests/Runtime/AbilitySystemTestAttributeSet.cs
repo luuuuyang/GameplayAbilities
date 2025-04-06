@@ -28,7 +28,7 @@ namespace GameplayAbilities.Tests
             return true;
         }
 
-        public override void PostGameplayEffectExecute(GameplayEffectModCallbackData data)
+        public override void PostGameplayEffectExecute(in GameplayEffectModCallbackData data)
         {
             FieldInfo damageField = typeof(AbilitySystemTestAttributeSet).GetField("Damage");
             FieldInfo modifiedField = data.EvaluatedData.Attribute.Property;

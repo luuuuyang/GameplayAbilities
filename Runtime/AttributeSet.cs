@@ -225,7 +225,7 @@ namespace GameplayAbilities
 			{
 				// 直接获取 float 值
 				oldValue = (float)field.GetValue(dest);
-				dest.PreAttributeChange(this, newValue);
+				dest.PreAttributeChange(this, ref newValue);
 				field.SetValue(dest, newValue);
 				dest.PostAttributeChange(this, oldValue, newValue);
 			}
@@ -236,7 +236,7 @@ namespace GameplayAbilities
 				Debug.Assert(attributeData != null);
 
 				oldValue = attributeData.CurrentValue;
-				dest.PreAttributeChange(this, newValue);
+				dest.PreAttributeChange(this, ref newValue);
 				attributeData.CurrentValue = newValue;
 				dest.PostAttributeChange(this, oldValue, newValue);
 			}
@@ -304,31 +304,31 @@ namespace GameplayAbilities
 			return true;
 		}
 
-		public virtual void PostGameplayEffectExecute(GameplayEffectModCallbackData data)
+		public virtual void PostGameplayEffectExecute(in GameplayEffectModCallbackData data)
 		{
 
 		}
 
-		public virtual void PreAttributeChange(GameplayAttribute attribute, float newValue)
+		public virtual void PreAttributeChange(in GameplayAttribute attribute, ref float newValue)
 		{
 		}
 
-		public virtual void PostAttributeChange(GameplayAttribute attribute, float oldValue, float newValue)
-		{
-
-		}
-
-		public virtual void PreAttributeBaseChange(GameplayAttribute attribute, float newValue)
+		public virtual void PostAttributeChange(in GameplayAttribute attribute, float oldValue, float newValue)
 		{
 
 		}
 
-		public virtual void PostAttributeBaseChange(GameplayAttribute attribute, float oldValue, float newValue)
+		public virtual void PreAttributeBaseChange(in GameplayAttribute attribute, ref float newValue)
 		{
 
 		}
 
-		public virtual void OnAttributeAggregatorCreated(GameplayAttribute attribute, Aggregator aggregator)
+		public virtual void PostAttributeBaseChange(in GameplayAttribute attribute, float oldValue, float newValue)
+		{
+
+		}
+
+		public virtual void OnAttributeAggregatorCreated(in GameplayAttribute attribute, Aggregator aggregator)
 		{
 
 		}

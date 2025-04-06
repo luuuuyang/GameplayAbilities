@@ -2120,7 +2120,7 @@ namespace GameplayAbilities
 
 			float oldBaseValue = 0;
 
-			set.PreAttributeBaseChange(attribute, newBaseValue);
+			set.PreAttributeBaseChange(attribute, ref newBaseValue);
 
 			bool isGameplayAttributeDataField = GameplayAttribute.IsGameplayAttributeDataField(attribute.Property);
 			if (isGameplayAttributeDataField)
