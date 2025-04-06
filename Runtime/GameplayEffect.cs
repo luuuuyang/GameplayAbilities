@@ -512,13 +512,13 @@ namespace GameplayAbilities
 	[Serializable]
 	public class InheritedTagContainer
 	{
-#if ODIN_INSPECTOR
 		[ReadOnly]
-#endif
 		public GameplayTagContainer CombinedTags = new();
 
+		[LabelText("Combined to Inherited")]
 		public GameplayTagContainer Added = new();
 
+		[LabelText("Remove from Inherited")]
 		public GameplayTagContainer Removed = new();
 
 		public void UpdateInheritedTagProperties(in InheritedTagContainer parent)

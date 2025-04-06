@@ -65,7 +65,7 @@ namespace GameplayAbilities
 		public GameplayAbilityReplicationPolicy ReplicationPolicy;
 		
 		[FoldoutGroup("Advanced")]
-		public GameplayAbilityInstancingPolicy InstancingPolicy;
+		public GameplayAbilityInstancingPolicy InstancingPolicy = GameplayAbilityInstancingPolicy.InstancedPerActor;
 
 		[FoldoutGroup("Advanced")]
 		public bool RetriggerInstancedAbility;

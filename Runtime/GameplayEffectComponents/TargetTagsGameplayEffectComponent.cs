@@ -1,12 +1,14 @@
-using System;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace GameplayAbilities
 {
+	[LabelText("Grant Tags To Target Actor")]
 	public class TargetTagsGameplayEffectComponent : GameplayEffectComponent
 	{
 		public InheritedTagContainer ConfiguredTargetTagsChanges => InheritableGrantedTagsContainer;
 
+		[LabelText("Add Tags")]
 		[SerializeField]
 		private InheritedTagContainer InheritableGrantedTagsContainer;
 

@@ -361,16 +361,27 @@ namespace GameplayAbilities
 		}
 
 		#region GameplayTags
-		public bool HasAnyMatchingGameplayTags(GameplayTagContainer tag_container)
+
+		public bool HasMatchingGameplayTag(GameplayTag tagToCheck)
 		{
-			return GameplayTagCountContainer.HasAnyMatchingGameplayTags(tag_container);
+			return GameplayTagCountContainer.HasMatchingGameplayTag(tagToCheck);
 		}
 
-		public void UpdateTagMap(in GameplayTagContainer container, int count_delta)
+		public bool HasAllMatchingGameplayTags(in GameplayTagContainer tagContainer)
+		{
+			return GameplayTagCountContainer.HasAllMatchingGameplayTags(tagContainer);
+		}
+
+		public bool HasAnyMatchingGameplayTags(in GameplayTagContainer tagContainer)
+		{
+			return GameplayTagCountContainer.HasAnyMatchingGameplayTags(tagContainer);
+		}
+
+		public void UpdateTagMap(in GameplayTagContainer container, int countDelta)
 		{
 			if (!container.IsEmpty())
 			{
-				UpdateTagMap_Internal(container, count_delta);
+				UpdateTagMap_Internal(container, countDelta);
 			}
 		}
 
