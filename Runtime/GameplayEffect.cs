@@ -2040,7 +2040,7 @@ namespace GameplayAbilities
 			}
 			else
 			{
-				Debug.Log($"{Owner.name} does not have attribute {modEvalData.Attribute.GetName()}. Skipping modifer");
+				Debug.LogWarning($"{Owner.name} does not have attribute {modEvalData.Attribute.GetName()}. Skipping modifer");
 			}
 
 			return executed;
