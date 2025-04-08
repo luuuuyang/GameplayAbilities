@@ -1,4 +1,5 @@
 using GameplayTags;
+using Sirenix.OdinInspector;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,13 +7,12 @@ using UnityEngine.Events;
 
 namespace GameplayAbilities
 {
+	[LabelText("Target Tag Reqs (While GE is Active)")]
 	public class TargetTagRequirementsGameplayEffectComponent : GameplayEffectComponent
 	{
-		public GameplayTagRequirements ApplicationTagRequirements;
-		// Once applied, these tags determine whether the GameplayEffect is on or off. A GameplayEffect can be off and still be applied. If a GameplayEffect is off due to failing the Ongoing Tag Requirements, but the requirements are then met, the GameplayEffect will turn on again and reapply its modifiers. This only works for Duration and Infinite GameplayEffects.
-		public GameplayTagRequirements OngoingTagRequirements;
-		// Tag requirements that if met will remove this effect. Also prevents effect application.
-		public GameplayTagRequirements RemovalTagRequirements;
+		public GameplayTagRequirements ApplicationTagRequirements = new();
+		public GameplayTagRequirements OngoingTagRequirements = new();
+		public GameplayTagRequirements RemovalTagRequirements = new();
 
 		public override bool CanGameplayEffectApply(in ActiveGameplayEffectsContainer activeGEContainer, in GameplayEffectSpec spec)
 		{

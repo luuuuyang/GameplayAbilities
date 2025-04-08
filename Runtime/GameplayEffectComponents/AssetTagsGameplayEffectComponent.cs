@@ -10,11 +10,9 @@ namespace GameplayAbilities
 	{
 		public InheritedTagContainer ConfiguredAssetTags => InheritableAssetTags;
 
-#if ODIN_INSPECTOR
 		[LabelText("Asset Tags")]
-#endif
 		[SerializeField]
-		private InheritedTagContainer InheritableAssetTags;
+		private InheritedTagContainer InheritableAssetTags = new();
 
 		public override void OnGameplayEffectChanged()
 		{

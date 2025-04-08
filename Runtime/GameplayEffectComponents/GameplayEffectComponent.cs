@@ -32,7 +32,7 @@ namespace GameplayAbilities
 
 		public static GameplayEffectComponent CreateInstance(Type type, GameplayEffect owner)
         {
-            GameplayEffectComponent component = CreateInstance(type)  as GameplayEffectComponent;
+            GameplayEffectComponent component = CreateInstance(type) as GameplayEffectComponent;
             component.Owner = owner;
             component.name = type.Name;
             return component;

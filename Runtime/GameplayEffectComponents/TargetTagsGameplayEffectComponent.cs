@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace GameplayAbilities
 {
-	[LabelText("Grant Tags To Target Actor")]
+	[LabelText("Target Tags (Granted To Actor)")]
 	public class TargetTagsGameplayEffectComponent : GameplayEffectComponent
 	{
 		public InheritedTagContainer ConfiguredTargetTagsChanges => InheritableGrantedTagsContainer;

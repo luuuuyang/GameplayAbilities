@@ -4,15 +4,10 @@ using System.Linq;
 using System.Reflection;
 using UnityEngine;
 using BeardPhantom.RuntimeTypeCache;
+using Sirenix.OdinInspector;
 
 #if UNITY_EDITOR
 using UnityEditor;
-using Mono.CSharp;
-
-#endif
-
-#if ODIN_INSPECTOR
-using Sirenix.OdinInspector;
 #endif
 
 namespace GameplayAbilities
@@ -35,10 +30,8 @@ namespace GameplayAbilities
 	[Serializable]
 	public class GameplayAttribute/* : ISerializationCallbackReceiver*/
 	{
-#if ODIN_INSPECTOR
 		[LabelText("Attribute")]
 		[ValueDropdown("CollectAttributeNamesFromAssembly")]
-#endif
 		public string AttributeName;
 
 		public FieldInfo Property
