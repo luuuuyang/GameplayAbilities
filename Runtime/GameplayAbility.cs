@@ -719,5 +719,32 @@ namespace GameplayAbilities
 
 			return this != null;
 		}
+
+		public AbilitySystemComponent GetAbilitySystemComponentFromActorInfo()
+		{
+			if (CurrentActorInfo == null)
+			{
+				return null;
+			}
+
+			return CurrentActorInfo.AbilitySystemComponent;
+		}
+
+		[Obsolete("Use GetAbilitySystemComponentFromActorInfo_Ensured instead")]
+		public AbilitySystemComponent GetAbilitySystemComponentFromActorInfo_Checked()
+		{
+			AbilitySystemComponent abilitySystemComponent = CurrentActorInfo != null ? CurrentActorInfo.AbilitySystemComponent : null;
+			Debug.Assert(abilitySystemComponent != null);
+
+			return abilitySystemComponent;
+		}
+
+		public AbilitySystemComponent GetAbilitySystemComponentFromActorInfo_Ensured()
+		{
+			Debug.Assert(CurrentActorInfo != null);
+			Debug.Assert(CurrentActorInfo.AbilitySystemComponent != null);
+
+			return CurrentActorInfo.AbilitySystemComponent;
+		}
 	}
 }

@@ -468,6 +468,12 @@ namespace GameplayAbilities
 		{
 			return GameplayTagCountContainer.ExplicitTags;
 		}
+
+		public int GetTagCount(GameplayTag tagToCheck)
+		{
+			return GameplayTagCountContainer.GetTagCount(tagToCheck);
+		}
+
 		#endregion
 
 		public void CaptureAttributeForGameplayEffect(GameplayEffectAttributeCaptureSpec captureSpec)
@@ -698,6 +704,30 @@ namespace GameplayAbilities
 				}
 			}
 			return null;
+		}
+
+		public List<GameplayAbilitySpec> FindAbilitySpecsFromGEHandle(ActiveGameplayEffectHandle activeGEHandle)
+		{
+			List<GameplayAbilitySpec> foundSpecs = new();
+
+			void GatherGAsByGEHandle(List<GameplayAbilitySpec> abilitiesToConsider)
+			{
+				foreach (var GASpec in abilitiesToConsider)
+				{
+					if (GASpec.GameplayEffectHandle == activeGEHandle)
+					{
+						if (!GASpec.PendingRemove)
+						{
+							foundSpecs.Add(GASpec);
+						}
+					}
+				}
+			}
+
+			GatherGAsByGEHandle(GetActivatableAbilities());
+			
+			
+			return foundSpecs;
 		}
 
 		public void ApplyAbilityBlockAndCancelTags(GameplayTagContainer abilityTags, GameplayAbility requestingAbility, bool enableBlockTags, in GameplayTagContainer blockTags, bool executeCancelTags, in GameplayTagContainer cancelTags)

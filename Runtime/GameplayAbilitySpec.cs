@@ -58,6 +58,7 @@ namespace GameplayAbilities
 		// A count of the number of times this ability has been activated minus the number of times it has been ended. For instanced abilities this will be the number of currently active instances. Can't replicate until prediction accurately handles this.
 		public int ActiveCount;
 		public bool RemoveAfterActivation;
+		public bool PendingRemove;
 		public bool ActivateOnce;
 		public ActiveGameplayEffectHandle GameplayEffectHandle = new(-1);
 
@@ -76,7 +77,7 @@ namespace GameplayAbilities
 			RemoveAfterActivation = false;
 		}
 
-		public GameplayAbilitySpec(GameplayAbility ability, int level = 1, GameObject sourceObject = null)
+		public GameplayAbilitySpec(GameplayAbility ability, int level = 1, UnityEngine.Object sourceObject = null)
 		{
 			Ability = ability;
 			Level = level;
