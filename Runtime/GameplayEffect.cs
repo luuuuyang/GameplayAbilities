@@ -1252,7 +1252,7 @@ namespace GameplayAbilities
 	{
 		public ActiveGameplayEffectHandle Handle;
 		public GameplayEffectSpec Spec;
-		public List<GameplayAbilitySpecHandle> GrantedAbilityHandles;
+		public List<GameplayAbilitySpecHandle> GrantedAbilityHandles = new();
 		public bool IsInhibited;
 		public float StartWorldTime;
 		public bool IsPendingRemove;
@@ -1270,6 +1270,19 @@ namespace GameplayAbilities
 		{
 			Handle = handle;
 			Spec = spec;
+		}
+
+		public ActiveGameplayEffect(in ActiveGameplayEffect other)
+		{
+			Handle = other.Handle;
+			Spec = new GameplayEffectSpec(other.Spec);
+			GrantedAbilityHandles = new List<GameplayAbilitySpecHandle>(other.GrantedAbilityHandles);
+			IsInhibited = other.IsInhibited;
+			StartWorldTime = other.StartWorldTime;
+			IsPendingRemove = other.IsPendingRemove;
+			PeriodHandle = other.PeriodHandle;
+			DurationHandle = other.DurationHandle;
+			EventSet = other.EventSet;
 		}
 
 		public float GetTimeRemaining(float worldTime)
@@ -2277,7 +2290,7 @@ namespace GameplayAbilities
 				}
 			}
 
-			Owner.UpdateTagMap(effect.Spec.Def.AssetTags, -1);
+			Owner.UpdateTagMap(effect.Spec.Def.GrantedTags, -1);
 			Owner.UpdateTagMap(effect.Spec.DynamicGrantedTags, -1);
 
 			Owner.UnblockAbilitiesWithTags(effect.Spec.Def.BlockedAbilityTags);
