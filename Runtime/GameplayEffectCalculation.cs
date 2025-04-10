@@ -1,18 +1,22 @@
+using Sirenix.OdinInspector;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-
-#if ODIN_INSPECTOR
-using Sirenix.OdinInspector;
-#endif
 
 namespace GameplayAbilities
 {
 	public abstract class GameplayEffectCalculation : ScriptableObject
 	{
-#if ODIN_INSPECTOR
 		[FoldoutGroup("Attributes")]
-#endif
-		public List<GameplayEffectAttributeCaptureDefinition> RelevantAttributesToCapture = new();
+		[SerializeField]
+		protected List<GameplayEffectAttributeCaptureDefinition> RelevantAttributesToCapture = new();
+
+		public virtual List<GameplayEffectAttributeCaptureDefinition> AttributeCaptureDefinitions
+		{
+			get
+			{
+				return RelevantAttributesToCapture;
+			}
+		}
 	}
 }

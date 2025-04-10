@@ -111,7 +111,7 @@ namespace GameplayAbilities
 				else
 				{
 					bool ongoingRequirementsMet = !OngoingTagRequirements.IsEmpty() && OngoingTagRequirements.RequirementsMet(ownedTags);
-					owner.InhibitActiveGameplayEffect(activeGEHandle, !ongoingRequirementsMet);
+					owner.SetActiveGameplayEffectInhibit(activeGEHandle, !ongoingRequirementsMet);
 				}
 			}
 		}

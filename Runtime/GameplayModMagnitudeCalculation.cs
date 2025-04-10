@@ -3,7 +3,7 @@ using GameplayTags;
 
 namespace GameplayAbilities
 {
-	public class GameplayModMagnitudeCalculation : GameplayEffectCalculation
+	public abstract class GameplayModMagnitudeCalculation : GameplayEffectCalculation
 	{
 		public virtual float CalculateBaseMagnitude_Implementation(in GameplayEffectSpec spec)
 		{

@@ -211,24 +211,16 @@ namespace GameplayAbilities
 	{
 		public GameplayEffectMagnitudeCalculation MagnitudeCalculationType;
 
-#if ODIN_INSPECTOR
 		[ShowIf("MagnitudeCalculationType", GameplayEffectMagnitudeCalculation.ScalableFloat)]
-#endif
 		public ScalableFloat ScalableFloatMagnitude;
 
-#if ODIN_INSPECTOR
 		[ShowIf("MagnitudeCalculationType", GameplayEffectMagnitudeCalculation.AttributeBased)]
-#endif
 		public AttributeBasedFloat AttributeBasedMagnitude;
 
-#if ODIN_INSPECTOR
 		[ShowIf("MagnitudeCalculationType", GameplayEffectMagnitudeCalculation.CustomCalculationClass)]
-#endif
 		public CustomCalculationBasedFloat CustomMagnitude;
 
-#if ODIN_INSPECTOR
 		[ShowIf("MagnitudeCalculationType", GameplayEffectMagnitudeCalculation.SetByCaller)]
-#endif
 		public SetByCallerFloat SetByCallerMagnitude;
 
 		public GameplayEffectModifierMagnitude()
@@ -468,14 +460,10 @@ namespace GameplayAbilities
 	{
 		public GameplayEffectExecutionCalculation CalculationClass;
 
-#if ODIN_INSPECTOR
 		[ShowIf("@CalculationClass != null && CalculationClass.RequiresPassedInTags")]
-#endif
 		public GameplayTagContainer PassedInTags;
 
-#if ODIN_INSPECTOR
 		[ShowIf("@CalculationClass != null && (CalculationClass.RelevantAttributesToCapture.Count > 0 || CalculationClass.InvalidScopedModifierAttributes.Count > 0 || CalculationClass.ValidTransientAggregatorIdentifiers.Count > 0)")]
-#endif
 		public List<GameplayEffectExecutionScopedModifierInfo> CalculationModifiers;
 
 		public List<ConditionalGameplayEffect> ConditionalGameplayEffects;
@@ -869,8 +857,16 @@ namespace GameplayAbilities
 		public List<GameplayAbilitySpecDef> GrantedAbilitySpecs = new();
 		public Dictionary<string, float> SetByCallerNameMagnitudes = new();
 		public Dictionary<GameplayTag, float> SetByCallerTagMagnitudes = new();
-		public float Level;
-		public GameplayEffectContextHandle EffectContext;
+		public float Level
+		{
+			get;
+			private set;
+		}
+		public GameplayEffectContextHandle EffectContext
+		{
+			get;
+			private set;
+		}
 
 		public GameplayEffectSpec()
 		{
@@ -1054,18 +1050,18 @@ namespace GameplayAbilities
 			}
 		}
 
-		public void SetDuration(float new_duration, bool lock_duration)
+		public void SetDuration(float newDuration, bool lockDuration)
 		{
 			if (!DurationLocked)
 			{
-				Duration = new_duration;
-				DurationLocked = lock_duration;
+				Duration = newDuration;
+				DurationLocked = lockDuration;
 			}
 		}
 
-		public void CaptureDataFromSource(bool skip_recapture_source_actor_tags = false)
+		public void CaptureDataFromSource(bool skipRecaptureSourceActorTags = false)
 		{
-			if (!skip_recapture_source_actor_tags)
+			if (!skipRecaptureSourceActorTags)
 			{
 				RecaptureSourceActorTags();
 			}
@@ -1089,21 +1085,21 @@ namespace GameplayAbilities
 
 		public GameplayEffectModifiedAttribute AddModifiedAttribute(in GameplayAttribute attribute)
 		{
-			GameplayEffectModifiedAttribute modified_attribute = new GameplayEffectModifiedAttribute
+			GameplayEffectModifiedAttribute modifiedAttribute = new()
 			{
 				Attribute = attribute
 			};
-			ModifiedAttributes.Add(modified_attribute);
-			return modified_attribute;
+			ModifiedAttributes.Add(modifiedAttribute);
+			return modifiedAttribute;
 		}
 
 		public GameplayEffectModifiedAttribute GetModifiedAttribute(in GameplayAttribute attribute)
 		{
-			foreach (GameplayEffectModifiedAttribute modified_attribute in ModifiedAttributes)
+			foreach (GameplayEffectModifiedAttribute modifiedAttribute in ModifiedAttributes)
 			{
-				if (modified_attribute.Attribute == attribute)
+				if (modifiedAttribute.Attribute == attribute)
 				{
-					return modified_attribute;
+					return modifiedAttribute;
 				}
 			}
 			return null;
@@ -1164,9 +1160,9 @@ namespace GameplayAbilities
 			return durationAgg.EvaluateWithBase(Duration, @params);
 		}
 
-		public void CaptureAttributeDataFromTarget(AbilitySystemComponent target_ability_system_component)
+		public void CaptureAttributeDataFromTarget(AbilitySystemComponent targetAbilitySystemComponent)
 		{
-			CapturedRelevantAttributes.CaptureAttributes(target_ability_system_component, GameplayEffectAttributeCaptureSource.Target);
+			CapturedRelevantAttributes.CaptureAttributes(targetAbilitySystemComponent, GameplayEffectAttributeCaptureSource.Target);
 		}
 
 		public bool AttemptCalculateDurationFromDef(ref float defDuration)
@@ -1749,7 +1745,7 @@ namespace GameplayAbilities
 			bool active = effectDef.OnAddedToActiveContainer(this, effect);
 
 			effect.IsInhibited = true;
-			Owner.InhibitActiveGameplayEffect(effect.Handle, !active);
+			Owner.SetActiveGameplayEffectInhibit(effect.Handle, !active);
 		}
 
 		public bool HandleActiveGameplayEffectStackOverflow(in ActiveGameplayEffect activeStackableGE, in GameplayEffectSpec oldSpec, in GameplayEffectSpec overflowingSpec)
@@ -2019,7 +2015,6 @@ namespace GameplayAbilities
 
 			spec.Def.OnExecuted(this, spec);
 		}
-
 
 		public bool InternalExecuteMod(GameplayEffectSpec spec, GameplayModifierEvaluatedData modEvalData)
 		{

@@ -280,13 +280,20 @@ namespace GameplayAbilities
 			return returnHandle;
 		}
 
-		public void InhibitActiveGameplayEffect(ActiveGameplayEffectHandle activeGEHandle, bool inhibit)
+		[Obsolete("Use SetActiveGameplayEffectInhibit with a MoveTemp(ActiveGEHandle) so it's clear the Handle is no longer valid. Check (then use) the returned FActiveGameplayEffectHandle to continue your operation.")]
+		public virtual void InhibitActiveGameplayEffect(ActiveGameplayEffectHandle activeGEHandle, bool inhibit)
+		{
+			ActiveGameplayEffectHandle continuationHandle = SetActiveGameplayEffectInhibit(activeGEHandle, inhibit);
+			Debug.Assert(continuationHandle.IsValid(), $"InhibitActiveGameplayEffect invalidated the incoming ActiveGEHandle. Update your code to SetActiveGameplayEffectInhibit so it's clear the incoming handle can be invalidated.");
+		}
+
+		public virtual ActiveGameplayEffectHandle SetActiveGameplayEffectInhibit(ActiveGameplayEffectHandle activeGEHandle, bool inhibit)
 		{
 			ActiveGameplayEffect activeGE = ActiveGameplayEffects.GetActiveGameplayEffect(activeGEHandle);
 			if (activeGE is null)
 			{
 				Debug.LogError($"InhibitActiveGameplayEffect received bad Active GameplayEffect Handle: {activeGEHandle}");
-				return;
+				return new ActiveGameplayEffectHandle();
 			}
 
 			if (activeGE.IsInhibited != inhibit)
@@ -302,8 +309,18 @@ namespace GameplayAbilities
 					ActiveGameplayEffects.AddActiveGameplayEffectGrantedTagsAndModifiers(activeGE);
 				}
 
-				activeGE.EventSet.OnInhibitionChanged?.Invoke(activeGEHandle, activeGE.IsInhibited);
+				if (!activeGE.IsPendingRemove)
+				{
+					activeGE.EventSet.OnInhibitionChanged?.Invoke(activeGEHandle, activeGE.IsInhibited);
+				}
+
+				if (activeGE.IsPendingRemove)
+				{
+					return new ActiveGameplayEffectHandle();
+				}
 			}
+
+			return activeGEHandle;
 		}
 
 		public bool RemoveActiveGameplayEffect(ActiveGameplayEffectHandle handle, int stacksToRemove = -1)

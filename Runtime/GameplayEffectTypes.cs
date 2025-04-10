@@ -277,6 +277,19 @@ namespace GameplayAbilities
             }
         }
 
+        public List<GameObject> Actors
+        {
+            get
+            {
+                if (IsValid)
+                {
+                    return Data.Actors;
+                }
+                
+                return new List<GameObject>();
+            }
+        }
+
         public GameplayEffectContextHandle Duplicate()
         {
             if (IsValid)
