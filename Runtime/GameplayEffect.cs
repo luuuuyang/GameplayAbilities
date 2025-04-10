@@ -1953,8 +1953,8 @@ namespace GameplayAbilities
 
 			GameplayEffectSpec specToUse = spec;
 
-			specToUse.CapturedTargetTags.AggregatedTags.Reset();
-			Owner.GetOwnedGameplayTags(specToUse.CapturedTargetTags.AggregatedTags);
+			specToUse.CapturedTargetTags.ActorTags.Reset();
+			Owner.GetOwnedGameplayTags(specToUse.CapturedTargetTags.ActorTags);
 
 			specToUse.CalculateModifierMagnitudes();
 
