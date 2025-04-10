@@ -2833,6 +2833,8 @@ namespace GameplayAbilities
 			ConvertRemoveOtherComponent();
 			ConvertTagRequirementsComponent();
 			ConvertTargetTagsComponent();
+
+			OnGameplayEffectChanged();
 		}
 
 		private void AddComponentMenu()
@@ -2856,6 +2858,7 @@ namespace GameplayAbilities
 							AssetDatabase.AddObjectToAsset(component, this);
 							EditorUtility.SetDirty(this);
 							AssetDatabase.SaveAssets();
+							AssetDatabase.Refresh();
 						}
 					});
 				}
@@ -2877,13 +2880,16 @@ namespace GameplayAbilities
 					// 确保在编辑器模式下
 #if UNITY_EDITOR
 					// 从资源文件中删除组件
-					UnityEditor.AssetDatabase.RemoveObjectFromAsset(component);
+					AssetDatabase.RemoveObjectFromAsset(component);
 					// 销毁组件对象
-					UnityEditor.Undo.DestroyObjectImmediate(component);
+					Undo.DestroyObjectImmediate(component);
 					// 标记资源已修改
-					UnityEditor.EditorUtility.SetDirty(this);
+					EditorUtility.SetDirty(this);
 					// 保存更改
-					UnityEditor.AssetDatabase.SaveAssets();
+					AssetDatabase.SaveAssets();
+					AssetDatabase.Refresh();
+
+					OnValidate();
 #endif
 				}
 			}
