@@ -773,8 +773,8 @@ namespace GameplayAbilities
 				}
 
 				GameplayTagContainer abilityTags = spec.Ability.AssetTags;
-				bool withTagPass = withoutTags is null || abilityTags.HasAny(withoutTags);
-				bool withoutTagPass = withTags is null || !abilityTags.HasAny(withTags);
+				bool withTagPass = withTags is null || abilityTags.HasAny(withTags);
+				bool withoutTagPass = withoutTags is null || !abilityTags.HasAny(withoutTags);
 
 				if (withTagPass && withoutTagPass)
 				{
