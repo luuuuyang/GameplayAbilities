@@ -453,9 +453,8 @@ namespace GameplayAbilities
 
 		public bool UnregisterGameplayTagEvent(UnityAction<GameplayTag, int> @delegate, GameplayTag tag, GameplayTagEventType eventType = GameplayTagEventType.NewOrRemoved)
 		{
-			var de = GameplayTagCountContainer.RegisterGameplayTagEvent(tag, eventType);
-			de.RemoveListener(@delegate);
-			return de == null;
+			GameplayTagCountContainer.RegisterGameplayTagEvent(tag, eventType).RemoveListener(@delegate);
+			return true;
 		}
 
 		public void GetOwnedGameplayTags(GameplayTagContainer tagContainer)
@@ -725,8 +724,8 @@ namespace GameplayAbilities
 			}
 
 			GatherGAsByGEHandle(GetActivatableAbilities());
-			
-			
+
+
 			return foundSpecs;
 		}
 

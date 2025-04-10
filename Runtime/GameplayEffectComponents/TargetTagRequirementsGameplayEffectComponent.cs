@@ -40,7 +40,6 @@ namespace GameplayAbilities
 				return false;
 			}
 
-			GameplayTagContainer tags = new();
 			ActiveGameplayEffectHandle activeGEHandle = activeGE.Handle;
 			ActiveGameplayEffectEvents eventSet = ASC.GetActiveEffectEventSet(activeGEHandle);
 			if (eventSet != null)
@@ -57,15 +56,15 @@ namespace GameplayAbilities
 				foreach (GameplayTag tag in gameplayTagsToBind)
 				{
 					OnGameplayEffectTagCountChanged onTagEvent = ASC.RegisterGameplayTagEvent(tag, GameplayTagEventType.NewOrRemoved);
-					void handle(GameplayTag gameplayTag, int newCount)
+					void call(GameplayTag gameplayTag, int newCount)
 					{
 						OnTagChanged(gameplayTag, newCount, activeGEHandle);
 					}
-					onTagEvent.AddListener(handle);
-					allBoundEvents.Add(new(tag, handle));
+					onTagEvent.AddListener(call);
+					allBoundEvents.Add(new(tag, call));
 				}
 
-				// eventSet.OnEffectRemoved += OnGameplayEffectRemoved;
+				eventSet.OnEffectRemoved += (GERemovalInfo) => OnGameplayEffectRemoved(GERemovalInfo, ASC, allBoundEvents);
 			}
 			else
 			{
@@ -73,19 +72,19 @@ namespace GameplayAbilities
 			}
 
 			GameplayTagContainer tagContainer = new();
-			ASC.GetOwnedGameplayTags(tags);
+			ASC.GetOwnedGameplayTags(tagContainer);
 
 			return OngoingTagRequirements.RequirementsMet(tagContainer);
 		}
 
 		public virtual void OnGameplayEffectRemoved(in GameplayEffectRemovalInfo GERemovalInfo, AbilitySystemComponent ASC, List<Tuple<GameplayTag, UnityAction<GameplayTag, int>>> allBoundEvents)
 		{
-			foreach (var tag in allBoundEvents)
+			foreach (Tuple<GameplayTag, UnityAction<GameplayTag, int>> pair in allBoundEvents)
 			{
-				bool success = ASC.UnregisterGameplayTagEvent(tag.Item2, tag.Item1, GameplayTagEventType.NewOrRemoved);
+				bool success = ASC.UnregisterGameplayTagEvent(pair.Item2, pair.Item1, GameplayTagEventType.NewOrRemoved);
 				if (!success)
 				{
-					Debug.LogError($"{this} tried to unregister GameplayTagEvent '{tag.Item1}' on GameplayEffect '{Owner}' but failed.");
+					Debug.LogError($"{this} tried to unregister GameplayTagEvent '{pair.Item1}' on GameplayEffect '{Owner}' but failed.");
 				}
 			}
 		}

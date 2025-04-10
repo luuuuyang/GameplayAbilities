@@ -1580,6 +1580,7 @@ namespace GameplayAbilities
 				{
 					if (!HandleActiveGameplayEffectStackOverflow(existingStackableGE, existingSpec, spec))
 					{
+						Debug.LogWarning($"Application of {spec} denied (StackLimit)");
 						return null;
 					}
 				}
@@ -1596,9 +1597,9 @@ namespace GameplayAbilities
 
 				appliedActiveGE = existingStackableGE;
 
-				GameplayEffect geDef = existingSpec.Def;
+				GameplayEffect GEDef = existingSpec.Def;
 
-				if (geDef.StackDurationRefreshPolicy == GameplayEffectStackingDurationPolicy.NeverRefresh)
+				if (GEDef.StackDurationRefreshPolicy == GameplayEffectStackingDurationPolicy.NeverRefresh)
 				{
 					setDuration = false;
 				}
@@ -1607,7 +1608,7 @@ namespace GameplayAbilities
 					RestartActiveGameplayEffectDuration(existingStackableGE);
 				}
 
-				if (geDef.StackPeriodResetPolicy == GameplayEffectStackingPeriodPolicy.NeverReset)
+				if (GEDef.StackPeriodResetPolicy == GameplayEffectStackingPeriodPolicy.NeverReset)
 				{
 					setPeriod = false;
 				}
@@ -1626,8 +1627,7 @@ namespace GameplayAbilities
 			GameplayEffectSpec appliedEffectSpec = appliedActiveGE.Spec;
 			AbilitySystemGlobals.Instance.GlobalPreGameplayEffectSpecApply(appliedEffectSpec, Owner);
 
-			appliedEffectSpec.CapturedTargetTags.
-			ActorTags.Reset();
+			appliedEffectSpec.CapturedTargetTags.ActorTags.Reset();
 			Owner.GetOwnedGameplayTags(appliedEffectSpec.CapturedTargetTags.ActorTags);
 
 			appliedEffectSpec.CaptureAttributeDataFromTarget(Owner);
@@ -2516,6 +2516,8 @@ namespace GameplayAbilities
 
 		public void OnStackCountChange(ActiveGameplayEffect activeEffect, int oldStackCount, int newStackCount)
 		{
+			Debug.Log($"OnStackCountChange: {activeEffect}. OldStackCount: {oldStackCount}. NewStackCount: {newStackCount}");
+
 			if (oldStackCount != newStackCount)
 			{
 				UpdateAllAggregatorModMagnitudes(activeEffect);
