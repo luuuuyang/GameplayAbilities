@@ -27,15 +27,15 @@ namespace GameplayAbilities
     
     public class GameplayAbilityActorInfo
 	{
-		public GameObject OwnerActor;
-		public GameObject AvatarActor;
-		public AbilitySystemComponent AbilitySystemComponent;
+		public WeakReference<GameObject> OwnerActor;
+		public WeakReference<GameObject> AvatarActor;
+		public WeakReference<AbilitySystemComponent> AbilitySystemComponent; 
 
 		public virtual void InitFromActor(GameObject ownerActor, GameObject avatarActor, AbilitySystemComponent abilitySystemComponent)
 		{
-			OwnerActor = ownerActor;
-			AvatarActor = avatarActor;
-			AbilitySystemComponent = abilitySystemComponent;
+			OwnerActor = new WeakReference<GameObject>(ownerActor);
+			AvatarActor = new WeakReference<GameObject>(avatarActor);
+			AbilitySystemComponent = new WeakReference<AbilitySystemComponent>(abilitySystemComponent);
 		}
 	}
 

@@ -67,5 +67,10 @@ namespace GameplayAbilities
 		{
 			return HashCode.Combine(AttributeToCapture, AttributeSource, Snapshot);
 		}
+
+		public override string ToString()
+		{
+			return $"Attribute: {AttributeToCapture}, Capture: {AttributeSource}, Snapshot: {Snapshot}";
+		}
 	}
 }

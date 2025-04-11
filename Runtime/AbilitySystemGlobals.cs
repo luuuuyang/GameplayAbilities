@@ -37,6 +37,7 @@ namespace GameplayAbilities
 		public GameplayTag ActivateFailTagsBlockedTag;
 		public GameplayTag ActivateFailTagsMissingTag;
 		public GameplayTag ActivateFailCooldownTag;
+		public GameplayTag ActivateFailCostTag;
 
 		//# Whether the game should allow the usage of gameplay mod evaluation channels or not
 		public bool AllowGameplayModEvaluationChannels;
@@ -71,6 +72,16 @@ namespace GameplayAbilities
 		public virtual void SetCurrentAppliedGE(in GameplayEffectSpec spec)
 		{
 
+		}
+
+		public virtual GameplayAbilityActorInfo AllocAbilityActorInfo()
+		{
+			return new GameplayAbilityActorInfo();
+		}
+
+		public virtual GameplayEffectContext AllocGameplayEffectContext()
+		{
+			return new GameplayEffectContext();
 		}
 	}
 }

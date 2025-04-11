@@ -7,20 +7,33 @@ namespace GameplayAbilities
 		public static Dictionary<ActiveGameplayEffectHandle, AbilitySystemComponent> Map = new();
 	}
 
-	public struct ActiveGameplayEffectHandle
+	public class ActiveGameplayEffectHandle
 	{
 		private int Handle;
+		private bool PassedFiltersAndWasExecuted;
 
 		private static int GHandleID = 0;
 
-		public ActiveGameplayEffectHandle(int handle = -1)
+		public ActiveGameplayEffectHandle()
+		{
+			Handle = -1;
+			PassedFiltersAndWasExecuted = false;
+		}
+
+		public ActiveGameplayEffectHandle(int handle)
 		{
 			Handle = handle;
+			PassedFiltersAndWasExecuted = true;
 		}
 
 		public bool IsValid()
 		{
 			return Handle != -1;
+		}
+
+		public bool WasSuccessfullyApplied()
+		{
+			return PassedFiltersAndWasExecuted;
 		}
 
 		public static void ResetGlobalHandleMap()
@@ -37,9 +50,9 @@ namespace GameplayAbilities
 			return newHandle;
 		}
 
-        public AbilitySystemComponent OwningAbilitySystemComponent => GlobalActiveGameplayEffectHandles.Map[this];
+		public AbilitySystemComponent OwningAbilitySystemComponent => GlobalActiveGameplayEffectHandles.Map[this];
 
-        public void RemoveFromGlobalMap()
+		public void RemoveFromGlobalMap()
 		{
 			GlobalActiveGameplayEffectHandles.Map.Remove(this);
 		}
@@ -67,6 +80,11 @@ namespace GameplayAbilities
 			}
 
 			return false;
+		}
+
+		public override string ToString()
+		{
+			return Handle.ToString();
 		}
 	}
 }

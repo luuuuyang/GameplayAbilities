@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using Sirenix.OdinInspector;
+using System.Linq;
 
 
 namespace GameplayAbilities
@@ -53,35 +54,34 @@ namespace GameplayAbilities
 
     public enum GameplayModOp
     {
-#if ODIN_INSPECTOR
         [LabelText("Add (Base)")]
-#endif
         AddBase,
-#if ODIN_INSPECTOR
+
         [LabelText("Multiply (Additive)")]
-#endif
         MultiplyAdditive,
-#if ODIN_INSPECTOR
+
         [LabelText("Divide (Additive)")]
-#endif
         DivideAdditive,
-#if ODIN_INSPECTOR
+
         [LabelText("Multiply (Compound)")]
-#endif
         MultiplyCompound = 4,
-#if ODIN_INSPECTOR
+
         [LabelText("Add (Final)")]
-#endif
         AddFinal,
+
         [HideInInspector]
         [LabelText("Invalid")]
         Max,
+
         [HideInInspector]
         Additive = 0,
+
         [HideInInspector]
         Multiplicitive = 1,
+
         [HideInInspector]
         Division = 2,
+
         Override = 3,
     }
 
@@ -125,50 +125,81 @@ namespace GameplayAbilities
         public GameplayAttribute Attribute;
         public GameplayModOp ModifierOp;
         public float Magnitude;
+        public ActiveGameplayEffectHandle Handle;
+        public bool IsValid;
 
-        public GameplayModifierEvaluatedData(in GameplayAttribute attribute, in GameplayModOp modifierOp, in float magnitude)
+        public GameplayModifierEvaluatedData()
+        {
+            ModifierOp = GameplayModOp.Additive;
+            Magnitude = 0;
+            IsValid = false;
+        }
+
+        public GameplayModifierEvaluatedData(in GameplayAttribute attribute, GameplayModOp modifierOp, float magnitude, ActiveGameplayEffectHandle handle = null)
         {
             Attribute = attribute;
             ModifierOp = modifierOp;
             Magnitude = magnitude;
+            Handle = handle is not null ? handle : new();
+            IsValid = true;
+        }
+
+        public override string ToString()
+        {
+            return $"{Attribute} {ModifierOp} EvalMag: {Magnitude}";
         }
     }
 
     public class GameplayEffectContext
     {
-        public GameObject Instigator;
-        public GameObject EffectCauser;
-        public UnityEngine.Object SourceObject;
-        public AbilitySystemComponent InstigatorAbilitySystemComponent;
-        public GameplayAbility AbilityCdo;
-        public GameplayAbility AbilityInstanceNotReplicated;
-        public List<GameObject> Actors = new();
-        public int AbilityLevel;
+        public WeakReference<GameObject> Instigator;
+        public WeakReference<GameObject> EffectCauser;
+        public WeakReference<UnityEngine.Object> SourceObject;
+        public WeakReference<AbilitySystemComponent> InstigatorAbilitySystemComponent;
+        public WeakReference<GameplayAbility> AbilityCdo;
+        public WeakReference<GameplayAbility> AbilityInstanceNotReplicated;
+        public List<WeakReference<GameObject>> Actors = new();
+        public int AbilityLevel = 1;
+
+        public GameplayEffectContext()
+        {
+
+        }
+
+        public GameplayEffectContext(GameObject instigator, GameObject effectCauser)
+        {
+            AddInstigator(instigator, effectCauser);
+        }
 
         public void AddInstigator(GameObject instigator, GameObject effectCauser)
         {
-            Instigator = instigator;
+            Instigator = new WeakReference<GameObject>(instigator);
+
             SetEffectCauser(effectCauser);
 
             InstigatorAbilitySystemComponent = null;
-            InstigatorAbilitySystemComponent = AbilitySystemGlobals.GetAbilitySystemComponentFromActor(Instigator);
+
+            if (Instigator.TryGetTarget(out GameObject target))
+            {
+                InstigatorAbilitySystemComponent = new WeakReference<AbilitySystemComponent>(AbilitySystemGlobals.GetAbilitySystemComponentFromActor(target));
+            }
         }
 
         public void SetEffectCauser(GameObject effectCauser)
         {
-            EffectCauser = effectCauser;
+            EffectCauser = new WeakReference<GameObject>(effectCauser);
         }
 
         public void SetAbility(GameplayAbility ability)
         {
-            AbilityCdo = ability;
-            AbilityInstanceNotReplicated = ability;
+            AbilityCdo = new WeakReference<GameplayAbility>(ability);
+            AbilityInstanceNotReplicated = new WeakReference<GameplayAbility>(ability);
             AbilityLevel = ability.GetAbilityLevel();
         }
 
         public void AddSourceObject(UnityEngine.Object sourceObject)
         {
-            SourceObject = sourceObject;
+            SourceObject = new WeakReference<UnityEngine.Object>(sourceObject);
         }
 
         public void AddActors(List<GameObject> actors, bool reset = false)
@@ -178,27 +209,39 @@ namespace GameplayAbilities
                 Actors.Clear();
             }
 
-            Actors.AddRange(actors);
+            foreach (GameObject actor in actors)
+            {
+                Actors.Add(new WeakReference<GameObject>(actor));
+            }
         }
 
-        public void GetOwnedGameplayTags(GameplayTagContainer actor_tag_container, GameplayTagContainer spec_tag_container)
+        public void GetOwnedGameplayTags(GameplayTagContainer actorTagContainer, GameplayTagContainer specTagContainer)
         {
-            if (InstigatorAbilitySystemComponent != null)
+            if (InstigatorAbilitySystemComponent.TryGetTarget(out AbilitySystemComponent ASC))
             {
-                InstigatorAbilitySystemComponent.GetOwnedGameplayTags(actor_tag_container);
+                ASC.GetOwnedGameplayTags(actorTagContainer);
             }
         }
 
         public virtual GameplayEffectContext Duplicate()
         {
-            GameplayEffectContext newContext = new GameplayEffectContext();
-            newContext.Instigator = Instigator;
-            newContext.EffectCauser = EffectCauser;
-            newContext.SourceObject = SourceObject;
-            newContext.InstigatorAbilitySystemComponent = InstigatorAbilitySystemComponent;
-            newContext.AbilityCdo = AbilityCdo;
-            newContext.AbilityInstanceNotReplicated = AbilityInstanceNotReplicated;
+            GameplayEffectContext newContext = new()
+            {
+                Instigator = Instigator,
+                EffectCauser = EffectCauser,
+                SourceObject = SourceObject,
+                InstigatorAbilitySystemComponent = InstigatorAbilitySystemComponent,
+                AbilityCdo = AbilityCdo,
+                AbilityInstanceNotReplicated = AbilityInstanceNotReplicated,
+                Actors = new List<WeakReference<GameObject>>(Actors),
+                AbilityLevel = AbilityLevel
+            };
             return newContext;
+        }
+
+        public override string ToString()
+        {
+            return Instigator.TryGetTarget(out GameObject target) ? target.name : "NONE";
         }
     }
 
@@ -243,7 +286,7 @@ namespace GameplayAbilities
             {
                 if (IsValid)
                 {
-                    return Data.InstigatorAbilitySystemComponent;
+                    return Data.InstigatorAbilitySystemComponent.TryGetTarget(out AbilitySystemComponent ASC) ? ASC : null;
                 }
                 return null;
             }
@@ -255,7 +298,7 @@ namespace GameplayAbilities
             {
                 if (IsValid)
                 {
-                    return Data.SourceObject;
+                    return Data.SourceObject.TryGetTarget(out UnityEngine.Object target) ? target : null;
                 }
                 return null;
             }
@@ -277,7 +320,7 @@ namespace GameplayAbilities
             }
         }
 
-        public List<GameObject> Actors
+        public List<WeakReference<GameObject>> Actors
         {
             get
             {
@@ -285,8 +328,8 @@ namespace GameplayAbilities
                 {
                     return Data.Actors;
                 }
-                
-                return new List<GameObject>();
+
+                return new List<WeakReference<GameObject>>();
             }
         }
 
@@ -319,6 +362,20 @@ namespace GameplayAbilities
         public static bool operator !=(GameplayEffectContextHandle a, GameplayEffectContextHandle b)
         {
             return !(a == b);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null || !(obj is GameplayEffectContextHandle))
+            {
+                return false;
+            }
+            return this == (GameplayEffectContextHandle)obj;
+        }
+
+        public override string ToString()
+        {
+            return IsValid ? Data.ToString() : "NONE";
         }
     }
 

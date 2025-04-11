@@ -1242,6 +1242,11 @@ namespace GameplayAbilities
 
 			return magnitude;
 		}
+
+		public override string ToString()
+		{
+			return Def.name;
+		}
 	}
 
 	public class ActiveGameplayEffect
@@ -1257,10 +1262,13 @@ namespace GameplayAbilities
 		public ActiveGameplayEffectEvents EventSet = new();
 
 		public float Duration => Spec.Duration;
-
 		public float Period => Spec.Period;
-
 		public float EndTime => Duration == GameplayEffectConstants.InfiniteDuration ? -1 : Duration + StartWorldTime;
+
+		public ActiveGameplayEffect()
+		{
+
+		}
 
 		public ActiveGameplayEffect(ActiveGameplayEffectHandle handle, in GameplayEffectSpec spec)
 		{
@@ -1284,6 +1292,30 @@ namespace GameplayAbilities
 		public float GetTimeRemaining(float worldTime)
 		{
 			return Duration == GameplayEffectConstants.InfiniteDuration ? -1 : Duration - (worldTime - StartWorldTime);
+		}
+
+		public static bool operator ==(ActiveGameplayEffect a, ActiveGameplayEffect b)
+		{
+			return a.Handle == b.Handle;
+		}
+
+		public static bool operator !=(ActiveGameplayEffect a, ActiveGameplayEffect b)
+		{
+			return !(a == b);
+		}
+
+		public override bool Equals(object obj)
+		{
+			if (obj is ActiveGameplayEffect other)
+			{
+				return Handle == other.Handle;
+			}
+			return false;
+		}
+
+		public override int GetHashCode()
+		{
+			return Handle.GetHashCode();
 		}
 	}
 
@@ -2066,7 +2098,7 @@ namespace GameplayAbilities
 			}
 			else
 			{
-				Debug.LogWarning($"{Owner.name} does not have attribute {modEvalData.Attribute.GetName()}. Skipping modifer");
+				Debug.LogWarning($"{Owner.name} does not have attribute {modEvalData.Attribute}. Skipping modifer");
 			}
 
 			return executed;

@@ -63,7 +63,7 @@ namespace GameplayAbilities
 
 		[FoldoutGroup("Advanced")]
 		public GameplayAbilityReplicationPolicy ReplicationPolicy;
-		
+
 		[FoldoutGroup("Advanced")]
 		public GameplayAbilityInstancingPolicy InstancingPolicy = GameplayAbilityInstancingPolicy.InstancedPerActor;
 
@@ -113,14 +113,13 @@ namespace GameplayAbilities
 		public virtual bool CanActivateAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, in GameplayTagContainer sourceTags, in GameplayTagContainer targetTags, out GameplayTagContainer optionalRelevantTags)
 		{
 			optionalRelevantTags = new GameplayTagContainer();
-			var avatarActor = actorInfo != null ? actorInfo.AvatarActor : null;
-			if (avatarActor == null)
+
+			if (actorInfo != null && !actorInfo.AvatarActor.TryGetTarget(out GameObject _))
 			{
 				return false;
 			}
 
-			var abilitySystemComponent = actorInfo.AbilitySystemComponent;
-			if (abilitySystemComponent == null)
+			if (!actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent))
 			{
 				return false;
 			}
@@ -239,7 +238,7 @@ namespace GameplayAbilities
 		// Do boilerplate init stuff and then call ActivateAbility
 		public virtual void PreActivate(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, OnGameplayAbilityEnded onGameplayAbilityEndedDelegate)
 		{
-			AbilitySystemComponent comp = actorInfo.AbilitySystemComponent;
+			actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent comp);
 
 			if (InstancingPolicy != GameplayAbilityInstancingPolicy.NonInstanced)
 			{
@@ -298,7 +297,8 @@ namespace GameplayAbilities
 
 			CommitExecute(handle, actorInfo);
 
-			actorInfo.AbilitySystemComponent.NotifyAbilityCommit(this);
+			actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent);
+			abilitySystemComponent.NotifyAbilityCommit(this);
 
 			return true;
 		}
@@ -307,7 +307,9 @@ namespace GameplayAbilities
 		{
 			bool validHandle = handle.IsValid();
 			bool validActorInfoPieces = actorInfo != null && actorInfo.AbilitySystemComponent != null;
-			bool validSpecFound = validActorInfoPieces && actorInfo.AbilitySystemComponent.FindAbilitySpecFromHandle(handle) != null;
+			
+			actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent);
+			bool validSpecFound = validActorInfoPieces && abilitySystemComponent.FindAbilitySpecFromHandle(handle) != null;
 
 			if (!validHandle || !validActorInfoPieces || !validSpecFound)
 			{
@@ -340,21 +342,23 @@ namespace GameplayAbilities
 			GameplayTagContainer cooldownTags = GetCooldownTags();
 			if (cooldownTags is not null && !cooldownTags.IsEmpty())
 			{
-				AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
-				if (abilitySystemComponent != null && abilitySystemComponent.HasAnyMatchingGameplayTags(cooldownTags))
+				if (actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent))
 				{
-					if (optionalRelevantTags is not null)
+					if (abilitySystemComponent.HasAnyMatchingGameplayTags(cooldownTags))
 					{
-						GameplayTag failCooldownTag = AbilitySystemGlobals.Instance.ActivateFailCooldownTag;
-						if (failCooldownTag.IsValid())
+						if (optionalRelevantTags is not null)
 						{
-							optionalRelevantTags.AddTag(failCooldownTag);
+							GameplayTag failCooldownTag = AbilitySystemGlobals.Instance.ActivateFailCooldownTag;
+							if (failCooldownTag.IsValid())
+							{
+								optionalRelevantTags.AddTag(failCooldownTag);
+							}
+
+							optionalRelevantTags.AppendMatchingTags(abilitySystemComponent.GetOwnedGameplayTags(), cooldownTags);
 						}
 
-						optionalRelevantTags.AppendMatchingTags(abilitySystemComponent.GetOwnedGameplayTags(), cooldownTags);
+						return false;
 					}
-
-					return false;
 				}
 			}
 			return true;
@@ -370,14 +374,18 @@ namespace GameplayAbilities
 			GameplayEffect costGE = Cost;
 			if (costGE != null)
 			{
-				AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
-				if (abilitySystemComponent != null)
+				if (actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent))
 				{
 					if (!abilitySystemComponent.CanApplyAttributeModifiers(costGE, GetAbilityLevel(handle, actorInfo), MakeEffectContext(handle, actorInfo)))
 					{
+						GameplayTag costTag = AbilitySystemGlobals.Instance.ActivateFailCostTag;
 
+						if (optionalRelevantTags is not null && costTag.IsValid())
+						{
+							optionalRelevantTags.AddTag(costTag);
+						}
+						return false;
 					}
-					return false;
 				}
 			}
 			return true;
@@ -444,8 +452,7 @@ namespace GameplayAbilities
 					IsAbilityEnding = false;
 				}
 
-				AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
-				if (abilitySystemComponent != null)
+				if (actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent))
 				{
 					abilitySystemComponent.RemoveLooseGameplayTags(ActivationOwnedTags);
 
@@ -472,8 +479,7 @@ namespace GameplayAbilities
 				return false;
 			}
 
-			AbilitySystemComponent abilityComp = actorInfo != null ? actorInfo.AbilitySystemComponent : null;
-			if (abilityComp == null)
+			if (actorInfo == null || !actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilityComp))
 			{
 				Debug.LogWarning($"IsEndAbilityValid returning false on Ability {this} due to AbilitySystemComponent being invalid");
 				return false;
@@ -528,8 +534,7 @@ namespace GameplayAbilities
 		{
 			if (specHandle.IsValid())
 			{
-				AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
-				if (abilitySystemComponent != null)
+				if (actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent))
 				{
 					return abilitySystemComponent.ApplyGameplayEffectSpecToSelf(specHandle.Data);
 				}
@@ -591,7 +596,7 @@ namespace GameplayAbilities
 				return new GameplayEffectSpecHandle();
 			}
 
-			AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
+			actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent);
 
 			GameplayEffectSpecHandle newHandle = abilitySystemComponent.MakeOutgoingSpec(gameplayEffect, level, MakeEffectContext(handle, actorInfo));
 			if (newHandle.IsValid())
@@ -610,17 +615,23 @@ namespace GameplayAbilities
 
 		public virtual GameplayEffectContextHandle MakeEffectContext(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo)
 		{
-			GameplayEffectContextHandle context = new GameplayEffectContextHandle();
+			GameplayEffectContextHandle context = new GameplayEffectContextHandle(AbilitySystemGlobals.Instance.AllocGameplayEffectContext());
 			context.SetAbility(this);
 
 			if (actorInfo != null)
 			{
-				context.AddInstigator(actorInfo.OwnerActor, actorInfo.AvatarActor);
+				actorInfo.OwnerActor.TryGetTarget(out GameObject ownerActor);
+				actorInfo.AvatarActor.TryGetTarget(out GameObject avatarActor);
+				context.AddInstigator(ownerActor, avatarActor);
 
-				GameplayAbilitySpec abilityspec = actorInfo.AbilitySystemComponent.FindAbilitySpecFromHandle(handle);
-				if (abilityspec is not null)
+				if (actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent))
 				{
-					context.AddSourceObject(abilityspec.SourceObject);
+					GameplayAbilitySpec abilitySpec = abilitySystemComponent.FindAbilitySpecFromHandle(handle);
+					if (abilitySpec is not null)
+					{
+						abilitySpec.SourceObject.TryGetTarget(out UnityEngine.Object sourceObject);
+						context.AddSourceObject(sourceObject);
+					}
 				}
 			}
 
@@ -636,14 +647,17 @@ namespace GameplayAbilities
 			if (abilitySpec != null)
 			{
 				capturedSourceTags.AppendTags(abilitySpec.DynamicSpecSourceTags);
-				IGameplayTagAssetInterface sourceObjAsTagInterface = abilitySpec.SourceObject as IGameplayTagAssetInterface;
-				if (sourceObjAsTagInterface != null)
-				{
-					GameplayTagContainer sourceObjTags = new GameplayTagContainer();
-					sourceObjAsTagInterface.GetOwnedGameplayTags(sourceObjTags);
 
-					capturedSourceTags.AppendTags(sourceObjTags);
-				}
+				if (abilitySpec.SourceObject.TryGetTarget(out UnityEngine.Object sourceObject))
+				{
+                    if (sourceObject is IGameplayTagAssetInterface sourceObjAsTagInterface)
+                    {
+                        GameplayTagContainer sourceObjTags = new();
+                        sourceObjAsTagInterface.GetOwnedGameplayTags(sourceObjTags);
+
+                        capturedSourceTags.AppendTags(sourceObjTags);
+                    }
+                }
 
 				spec.MergeSetByCallerMagnitude(abilitySpec.SetByCallerTagMagnitudes);
 			}
@@ -684,8 +698,7 @@ namespace GameplayAbilities
 		{
 			if (actorInfo != null)
 			{
-				AbilitySystemComponent abilitySystemComponent = actorInfo.AbilitySystemComponent;
-				if (abilitySystemComponent != null)
+				if (actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent))
 				{
 					GameplayAbilitySpec spec = abilitySystemComponent.FindAbilitySpecFromHandle(handle);
 					if (spec is not null)
@@ -722,18 +735,21 @@ namespace GameplayAbilities
 
 		public AbilitySystemComponent GetAbilitySystemComponentFromActorInfo()
 		{
-			if (CurrentActorInfo == null)
-			{
-				return null;
-			}
+			Debug.Assert(CurrentActorInfo != null);
 
-			return CurrentActorInfo.AbilitySystemComponent;
+			CurrentActorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent);
+			return abilitySystemComponent;
 		}
 
 		[Obsolete("Use GetAbilitySystemComponentFromActorInfo_Ensured instead")]
 		public AbilitySystemComponent GetAbilitySystemComponentFromActorInfo_Checked()
 		{
-			AbilitySystemComponent abilitySystemComponent = CurrentActorInfo != null ? CurrentActorInfo.AbilitySystemComponent : null;
+			if (CurrentActorInfo == null)
+			{
+				return null;
+			}
+
+			CurrentActorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent);
 			Debug.Assert(abilitySystemComponent != null);
 
 			return abilitySystemComponent;
@@ -742,9 +758,11 @@ namespace GameplayAbilities
 		public AbilitySystemComponent GetAbilitySystemComponentFromActorInfo_Ensured()
 		{
 			Debug.Assert(CurrentActorInfo != null);
-			Debug.Assert(CurrentActorInfo.AbilitySystemComponent != null);
 
-			return CurrentActorInfo.AbilitySystemComponent;
+			CurrentActorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent);
+			Debug.Assert(abilitySystemComponent != null);
+
+			return abilitySystemComponent;
 		}
 	}
 }

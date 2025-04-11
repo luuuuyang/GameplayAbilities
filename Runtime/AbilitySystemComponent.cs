@@ -21,7 +21,7 @@ namespace GameplayAbilities
 		public GameplayTagCountContainer BlockedAbilityTags = new();
 		public ActiveGameplayEffectsContainer ActiveGameplayEffects = new();
 		public GameplayAbilitySpecContainer ActivatableAbilities = new();
-		public GameplayAbilityActorInfo AbilityActorInfo = new();
+		public GameplayAbilityActorInfo AbilityActorInfo;
 		[HideInInspector]
 		public bool SuppressGrantAbility;
 		[HideInInspector]
@@ -78,6 +78,12 @@ namespace GameplayAbilities
 		[HideInInspector]
 		public bool UserAbilityActivationInhibited;
 
+		[HideInInspector]
+		public GameObject OwnerActor;
+
+		[HideInInspector]
+		public GameObject AvatarActor;
+
 		private GameplayTagContainer InternalTryActivateAbilityFailureTags = new();
 
 		protected Dictionary<GameplayTag, List<GameplayAbilitySpecHandle>> GameplayEventTriggerdAbilities = new();
@@ -94,18 +100,24 @@ namespace GameplayAbilities
 
 		protected virtual void Start()
 		{
+			AbilityActorInfo = AbilitySystemGlobals.Instance.AllocAbilityActorInfo();
 			InitAbilityActorInfo(gameObject, gameObject);
 		}
 
-		public virtual void InitAbilityActorInfo(GameObject ownerActor, GameObject avatarActor)
+		public virtual void InitAbilityActorInfo(GameObject inOwnerActor, GameObject inAvatarActor)
 		{
-			bool avatarChanged = avatarActor != AbilityActorInfo.AvatarActor;
+			Debug.Assert(AbilityActorInfo != null);
+			AbilityActorInfo.AvatarActor.TryGetTarget(out GameObject avatarActor);
+			bool avatarChanged = inAvatarActor != avatarActor;
 
-			AbilityActorInfo.InitFromActor(ownerActor, avatarActor, this);
+			AbilityActorInfo.InitFromActor(inOwnerActor, inAvatarActor, this);
+
+			OwnerActor = inOwnerActor;
+			AvatarActor = inAvatarActor;
 
 			if (avatarChanged)
 			{
-				foreach (var spec in ActivatableAbilities.Items)
+				foreach (GameplayAbilitySpec spec in ActivatableAbilities.Items)
 				{
 					if (spec.Ability != null)
 					{
@@ -800,10 +812,21 @@ namespace GameplayAbilities
 			}
 		}
 
-		public GameplayEffectContextHandle MakeEffectContext()
+		public virtual GameplayEffectContextHandle MakeEffectContext()
 		{
-			GameplayEffectContextHandle context = new(new GameplayEffectContext());
-			context.AddInstigator(AbilityActorInfo.OwnerActor, AbilityActorInfo.AvatarActor);
+			GameplayEffectContextHandle context = new(AbilitySystemGlobals.Instance.AllocGameplayEffectContext());
+
+			if (AbilityActorInfo != null)
+			{
+				AbilityActorInfo.OwnerActor.TryGetTarget(out GameObject ownerActor);
+				AbilityActorInfo.AvatarActor.TryGetTarget(out GameObject avatarActor);
+				context.AddInstigator(ownerActor, avatarActor);
+			}
+			else
+			{
+				Debug.LogWarning("Unable to make effect context because AbilityActorInfo is not valid.");
+			}
+
 			return context;
 		}
 
@@ -1366,14 +1389,14 @@ namespace GameplayAbilities
 		{
 			if (!handle.IsValid())
 			{
-				Debug.LogWarning($"InternalTryActivateAbility called with invalid Handle! ASC: {this.name}. AvatarActor: {AbilityActorInfo.AvatarActor.name}");
+				Debug.LogWarning($"InternalTryActivateAbility called with invalid Handle! ASC: {name}. AvatarActor: {AvatarActor}");
 				return false;
 			}
 
 			GameplayAbilitySpec spec = FindAbilitySpecFromHandle(handle);
 			if (spec == null)
 			{
-				Debug.LogWarning($"InternalTryActivateAbility called with a valid handle but no matching ability was found. Handle: {handle}. ASC: {this.name}. AvatarActor: {AbilityActorInfo.AvatarActor.name}");
+				Debug.LogWarning($"InternalTryActivateAbility called with a valid handle but no matching ability was found. Handle: {handle}. ASC: {name}. AvatarActor: {AvatarActor}");
 				return false;
 			}
 

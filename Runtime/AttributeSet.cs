@@ -261,7 +261,7 @@ namespace GameplayAbilities
 			return Property.GetHashCode();
 		}
 
-		public string GetName()
+		public override string ToString()
 		{
 			return string.IsNullOrEmpty(AttributeName) ? Property.Name : AttributeName;
 		}
