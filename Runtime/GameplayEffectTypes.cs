@@ -152,12 +152,12 @@ namespace GameplayAbilities
 
     public class GameplayEffectContext
     {
-        public WeakReference<GameObject> Instigator;
-        public WeakReference<GameObject> EffectCauser;
-        public WeakReference<UnityEngine.Object> SourceObject;
-        public WeakReference<AbilitySystemComponent> InstigatorAbilitySystemComponent;
-        public WeakReference<GameplayAbility> AbilityCdo;
-        public WeakReference<GameplayAbility> AbilityInstanceNotReplicated;
+        public WeakReference<GameObject> Instigator = new(null);
+        public WeakReference<GameObject> EffectCauser = new(null);
+        public WeakReference<UnityEngine.Object> SourceObject = new(null);
+        public WeakReference<AbilitySystemComponent> InstigatorAbilitySystemComponent = new(null);
+        public WeakReference<GameplayAbility> AbilityCdo = new(null);
+        public WeakReference<GameplayAbility> AbilityInstanceNotReplicated = new(null);
         public List<WeakReference<GameObject>> Actors = new();
         public int AbilityLevel = 1;
 
@@ -173,33 +173,33 @@ namespace GameplayAbilities
 
         public void AddInstigator(GameObject instigator, GameObject effectCauser)
         {
-            Instigator = new WeakReference<GameObject>(instigator);
+            Instigator.SetTarget(instigator);
 
             SetEffectCauser(effectCauser);
 
-            InstigatorAbilitySystemComponent = null;
+            InstigatorAbilitySystemComponent.SetTarget(null);
 
             if (Instigator.TryGetTarget(out GameObject target))
             {
-                InstigatorAbilitySystemComponent = new WeakReference<AbilitySystemComponent>(AbilitySystemGlobals.GetAbilitySystemComponentFromActor(target));
+                InstigatorAbilitySystemComponent.SetTarget(AbilitySystemGlobals.GetAbilitySystemComponentFromActor(target));
             }
         }
 
         public void SetEffectCauser(GameObject effectCauser)
         {
-            EffectCauser = new WeakReference<GameObject>(effectCauser);
+            EffectCauser.SetTarget(effectCauser);
         }
 
         public void SetAbility(GameplayAbility ability)
         {
-            AbilityCdo = new WeakReference<GameplayAbility>(ability);
-            AbilityInstanceNotReplicated = new WeakReference<GameplayAbility>(ability);
+            AbilityCdo.SetTarget(ability);
+            AbilityInstanceNotReplicated.SetTarget(ability);
             AbilityLevel = ability.GetAbilityLevel();
         }
 
         public void AddSourceObject(UnityEngine.Object sourceObject)
         {
-            SourceObject = new WeakReference<UnityEngine.Object>(sourceObject);
+            SourceObject.SetTarget(sourceObject);
         }
 
         public void AddActors(List<GameObject> actors, bool reset = false)
@@ -284,9 +284,9 @@ namespace GameplayAbilities
         {
             get
             {
-                if (IsValid)
+                if (IsValid && Data.InstigatorAbilitySystemComponent.TryGetTarget(out AbilitySystemComponent instigatorAbilitySystemComponent))
                 {
-                    return Data.InstigatorAbilitySystemComponent.TryGetTarget(out AbilitySystemComponent ASC) ? ASC : null;
+                    return instigatorAbilitySystemComponent;
                 }
                 return null;
             }
@@ -296,9 +296,9 @@ namespace GameplayAbilities
         {
             get
             {
-                if (IsValid)
+                if (IsValid && Data.SourceObject.TryGetTarget(out UnityEngine.Object sourceObject))
                 {
-                    return Data.SourceObject.TryGetTarget(out UnityEngine.Object target) ? target : null;
+                    return sourceObject;
                 }
                 return null;
             }
