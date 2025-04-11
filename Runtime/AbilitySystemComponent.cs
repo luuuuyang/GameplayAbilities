@@ -107,6 +107,7 @@ namespace GameplayAbilities
 		public virtual void InitAbilityActorInfo(GameObject inOwnerActor, GameObject inAvatarActor)
 		{
 			Debug.Assert(AbilityActorInfo != null);
+			
 			AbilityActorInfo.AvatarActor.TryGetTarget(out GameObject avatarActor);
 			bool avatarChanged = inAvatarActor != avatarActor;
 

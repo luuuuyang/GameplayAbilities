@@ -1296,6 +1296,16 @@ namespace GameplayAbilities
 
 		public static bool operator ==(ActiveGameplayEffect a, ActiveGameplayEffect b)
 		{
+			if (a is null && b is null)
+			{
+				return true;
+			}
+
+			if (a is null || b is null)
+			{
+				return false;
+			}
+			
 			return a.Handle == b.Handle;
 		}
 

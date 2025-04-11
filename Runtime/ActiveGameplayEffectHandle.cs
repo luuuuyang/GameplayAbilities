@@ -59,12 +59,22 @@ namespace GameplayAbilities
 
 		public static bool operator ==(ActiveGameplayEffectHandle a, ActiveGameplayEffectHandle b)
 		{
+			if (a is null && b is null)
+			{
+				return true;
+			}
+
+			if (a is null || b is null)
+			{
+				return false;
+			}
+			
 			return a.Handle == b.Handle;
 		}
 
 		public static bool operator !=(ActiveGameplayEffectHandle a, ActiveGameplayEffectHandle b)
 		{
-			return a.Handle != b.Handle;
+			return !(a == b);
 		}
 
 		public override int GetHashCode()
