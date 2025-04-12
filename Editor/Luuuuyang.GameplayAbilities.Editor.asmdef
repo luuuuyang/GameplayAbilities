@@ -1,0 +1,18 @@
+{
+    "name": "Luuuuyang.GameplayAbilities.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:a1eef689f89b81341b0d46cb8530e513"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

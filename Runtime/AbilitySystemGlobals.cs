@@ -39,11 +39,6 @@ namespace GameplayAbilities
 		public GameplayTag ActivateFailCooldownTag;
 		public GameplayTag ActivateFailCostTag;
 
-		//# Whether the game should allow the usage of gameplay mod evaluation channels or not
-		public bool AllowGameplayModEvaluationChannels;
-
-		public List<GameplayModEvaluationChannel> GameplayModEvaluationChannelAliases;
-
 		public static AbilitySystemComponent GetAbilitySystemComponentFromActor(GameObject actor, bool lookForComponent = true)
 		{
 			if (actor == null)
@@ -59,9 +54,27 @@ namespace GameplayAbilities
 			return null;
 		}
 
+		public bool ShouldAllowGameplayModEvaluationChannels()
+		{
+			return GameplayAbilitiesDeveloperSettings.GetOrCreateSettings().AllowGameplayModEvaluationChannels;
+		}
+
 		public bool IsGameplayModEvaluationChannelValid(GameplayModEvaluationChannel channel)
 		{
-			return AllowGameplayModEvaluationChannels ? GameplayModEvaluationChannelAliases.Contains(channel) : channel == GameplayModEvaluationChannel.Channel0;
+			bool allowChannels = ShouldAllowGameplayModEvaluationChannels();
+			return allowChannels ? !string.IsNullOrEmpty(GetGameplayModEvaluationChannelAliases(channel)) : channel == GameplayModEvaluationChannel.Channel0;
+		}
+
+		public string GetGameplayModEvaluationChannelAliases(GameplayModEvaluationChannel channel)
+		{
+			return GetGameplayModEvaluationChannelAliases((int)channel);
+		}
+
+		public string GetGameplayModEvaluationChannelAliases(int index)
+		{
+			GameplayAbilitiesDeveloperSettings developerSettings = GameplayAbilitiesDeveloperSettings.GetOrCreateSettings();
+			Debug.Assert(index >= 0 && index < developerSettings.GameplayModEvaluationChannelAliases.Length);
+			return developerSettings.GameplayModEvaluationChannelAliases[index];
 		}
 
 		public virtual void GlobalPreGameplayEffectSpecApply(GameplayEffectSpec spec, AbilitySystemComponent abilitySystemComponent)

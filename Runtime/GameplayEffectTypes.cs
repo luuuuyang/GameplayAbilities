@@ -25,9 +25,11 @@ namespace GameplayAbilities
         ChannelMax
     }
 
+    [Serializable]
     public struct GameplayModEvaluationChannelSettings
     {
-        public GameplayModEvaluationChannel Channel;
+        [SerializeField]
+        private GameplayModEvaluationChannel Channel;
 
         public GameplayModEvaluationChannel EvaluationChannel
         {

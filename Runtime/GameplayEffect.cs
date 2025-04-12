@@ -485,12 +485,11 @@ namespace GameplayAbilities
 	[Serializable]
 	public class GameplayModifierInfo
 	{
-#if ODIN_INSPECTOR
 		[HideLabel]
-#endif
 		public GameplayAttribute Attribute = new();
 		public GameplayModOp ModifierOp = GameplayModOp.Additive;
 		public GameplayEffectModifierMagnitude ModifierMagnitude = new();
+		[ShowIf("@AbilitySystemGlobals.Instance.ShouldAllowGameplayModEvaluationChannels()")]
 		public GameplayModEvaluationChannelSettings EvaluationChannelSettings;
 		public GameplayTagRequirements SourceTags;
 		public GameplayTagRequirements TargetTags;

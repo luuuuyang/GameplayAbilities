@@ -1,5 +1,6 @@
 using GameplayTags;
 using UnityEngine;
+using System.Collections.Generic;
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -16,6 +17,10 @@ namespace GameplayAbilities
         public GameplayTag ActivateFailNetworkingTag;
         public GameplayTag ActivateFailTagsBlockedTag;
         public GameplayTag ActivateFailTagsMissingTag;
+
+        public bool AllowGameplayModEvaluationChannels;
+        public GameplayModEvaluationChannel DefaultGameplayModEvaluationChannel = GameplayModEvaluationChannel.Channel0;
+        public string[] GameplayModEvaluationChannelAliases = new string[10];
 
         public static GameplayAbilitiesDeveloperSettings GetOrCreateSettings()
         {
