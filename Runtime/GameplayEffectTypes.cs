@@ -426,19 +426,15 @@ namespace GameplayAbilities
 
     public class GameplayTagCountContainer
     {
-        public Dictionary<GameplayTag, DelegateInfo> GameplayTagEventMap = new();
-
         public List<GameplayTag> GameplayTags = new();
-
         public List<GameplayTag> ParentTags = new();
+        public GameplayTagContainer ExplicitGameplayTags => ExplicitTags;
 
-        public Dictionary<GameplayTag, int> GameplayTagCountMap = new();
-
-        public Dictionary<GameplayTag, int> ExplicitTagCountMap = new();
-
-        public OnGameplayEffectTagCountChanged OnAnyTagChangeDelegate;
-
-        public GameplayTagContainer ExplicitTags = new();
+        private Dictionary<GameplayTag, DelegateInfo> GameplayTagEventMap = new();
+        private Dictionary<GameplayTag, int> GameplayTagCountMap = new();
+        private Dictionary<GameplayTag, int> ExplicitTagCountMap = new();
+        private OnGameplayEffectTagCountChanged OnAnyTagChangeDelegate;
+        private GameplayTagContainer ExplicitTags = new();
 
         public class DelegateInfo
         {

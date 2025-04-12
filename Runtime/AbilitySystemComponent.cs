@@ -2,7 +2,6 @@ using GameplayTags;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Assertions;
 using System.Reflection;
 using System.Linq;
 using UnityEngine.Events;
@@ -107,7 +106,7 @@ namespace GameplayAbilities
 		public virtual void InitAbilityActorInfo(GameObject inOwnerActor, GameObject inAvatarActor)
 		{
 			Debug.Assert(AbilityActorInfo != null);
-			
+
 			AbilityActorInfo.AvatarActor.TryGetTarget(out GameObject avatarActor);
 			bool avatarChanged = inAvatarActor != avatarActor;
 
@@ -414,7 +413,7 @@ namespace GameplayAbilities
 
 		public GameplayTagContainer GetBlockedAbilityTags()
 		{
-			return BlockedAbilityTags.ExplicitTags;
+			return BlockedAbilityTags.ExplicitGameplayTags;
 		}
 
 		protected void UpdateTagMap_Internal(in GameplayTagContainer container, in int countDelta)
@@ -490,12 +489,12 @@ namespace GameplayAbilities
 		public void GetOwnedGameplayTags(GameplayTagContainer tagContainer)
 		{
 			tagContainer.Reset();
-			tagContainer.AppendTags(GameplayTagCountContainer.ExplicitTags);
+			tagContainer.AppendTags(GetOwnedGameplayTags());
 		}
 
 		public GameplayTagContainer GetOwnedGameplayTags()
 		{
-			return GameplayTagCountContainer.ExplicitTags;
+			return GameplayTagCountContainer.ExplicitGameplayTags;
 		}
 
 		public int GetTagCount(GameplayTag tagToCheck)
@@ -1640,5 +1639,274 @@ namespace GameplayAbilities
 		{
 			return ActiveGameplayEffects.RemoveActiveEffects(query, stacksToRemove);
 		}
+
+		public List<float> GetActiveEffectsTimeRemaining(in GameplayEffectQuery query)
+		{
+			return ActiveGameplayEffects.GetActiveEffectsTimeRemaining(query);
+		}
+
+		#region Debug
+
+		public struct AbilitySystemComponentDebugInfo
+		{
+			public bool ShowAttributes;
+			public bool ShowGameplayEffects;
+			public bool ShowAbilities;
+		}
+
+		public virtual void Debug_Internal(AbilitySystemComponentDebugInfo info)
+		{
+			string debugTitle = string.Empty;
+			if (info.ShowAbilities)
+			{
+				debugTitle += $"ABILITIES ";
+			}
+			if (info.ShowAttributes)
+			{
+				debugTitle += $"ATTRIBUTES ";
+			}
+			if (info.ShowGameplayEffects)
+			{
+				debugTitle += $"GAMEPLAYEFFECTS ";
+			}
+			Debug.Log(debugTitle);
+
+			GameplayTagContainer ownedTags = new();
+			GetOwnedGameplayTags(ownedTags);
+
+			string tagsStrings = string.Empty;
+			int tagCount = 1;
+			int numTags = ownedTags.Count;
+			foreach (GameplayTag tag in ownedTags)
+			{
+				tagsStrings += $"{tag} ({GetTagCount(tag)}) ";
+				if (tagCount++ < numTags)
+				{
+					tagsStrings += ", ";
+				}
+			}
+			Debug.Log($"Owned Tags: {tagsStrings}");
+
+			if (BlockedAbilityTags.ExplicitGameplayTags.Count > 0)
+			{
+				string blockedTagsStrings = string.Empty;
+				int blockedTagCount = 1;
+				foreach (GameplayTag tag in BlockedAbilityTags.ExplicitGameplayTags)
+				{
+					blockedTagsStrings += $"{tag} ({BlockedAbilityTags.GetTagCount(tag)})";
+					if (blockedTagCount++ < numTags)
+					{
+						blockedTagsStrings += ", ";
+					}
+				}
+				Debug.Log($"BlockedAbilitiesTags: {blockedTagsStrings}");
+			}
+			else
+			{
+				Debug.Log($"BlockedAbilitiesTags: ");
+			}
+
+			HashSet<GameplayAttribute> drawAttributes = new();
+
+			if (info.ShowAttributes)
+			{
+				foreach (KeyValuePair<GameplayAttribute, Aggregator> it in ActiveGameplayEffects.AttributeAggregatorMap)
+				{
+					GameplayAttribute attribute = it.Key;
+					Aggregator aggregator = it.Value;
+					if (aggregator != null)
+					{
+						AggregatorEvaluateParameters emptyParams = new();
+
+						Dictionary<GameplayModEvaluationChannel, List<AggregatorMod>[]> modMap = new();
+						aggregator.EvaluateQualificationForAllMods(emptyParams);
+						aggregator.GetAllAggregatorMods(modMap);
+
+						if (modMap.Count == 0)
+						{
+							continue;
+						}
+
+						float finalValue = GetNumericAttribute(attribute);
+						float baseValue = aggregator.BaseValue;
+
+						string attributeString = $"{attribute} ({finalValue:F2}) ";
+						if (Mathf.Abs(finalValue - baseValue) > 1E-4f)
+						{
+							attributeString += $" (Base: {baseValue:F2})";
+						}
+
+						Debug.Log(attributeString);
+
+						drawAttributes.Add(attribute);
+
+						foreach (KeyValuePair<GameplayModEvaluationChannel, List<AggregatorMod>[]> curMapElement in modMap)
+						{
+							GameplayModEvaluationChannel channel = curMapElement.Key;
+							List<AggregatorMod>[] modArrays = curMapElement.Value;
+
+							string channelNameString = AbilitySystemGlobals.Instance.GetGameplayModEvaluationChannelAliases(channel);
+							for (int modOpIdx = 0; modOpIdx < (int)GameplayModOp.Max; modOpIdx++)
+							{
+								List<AggregatorMod> curModArray = modArrays[modOpIdx];
+								foreach (AggregatorMod mod in curModArray)
+								{
+									bool isActivelyModifyingAttribute = mod.Qualifies;
+
+									ActiveGameplayEffect activeGE = ActiveGameplayEffects.GetActiveGameplayEffect(mod.ActiveHandle);
+									string srcName = activeGE is not null ? activeGE.Spec.Def.name : string.Empty;
+
+									if (!isActivelyModifyingAttribute)
+									{
+										if (mod.SourceTagReqs is not null)
+										{
+											srcName += $" SourceTags: [{mod.SourceTagReqs}] ";
+										}
+										if (mod.TargetTagReqs is not null)
+										{
+											srcName += $" TargetTags: [{mod.TargetTagReqs}] ";
+										}
+									}
+
+									Debug.Log($"   {channelNameString} {(GameplayModOp)modOpIdx}\t {mod.EvaluatedMagnitude:F2} - {srcName}");
+								}
+							}
+						}
+					}
+				}
+			}
+
+			if (info.ShowGameplayEffects)
+			{
+				foreach (ActiveGameplayEffect activeGE in ActiveGameplayEffects)
+				{
+					string durationStr = "Infinite Duration ";
+					if (activeGE.Duration > 0)
+					{
+						durationStr = $"Duration:{activeGE.Duration:F2}. Remaining: {activeGE.GetTimeRemaining(TimerManager.Instance.GetTimeSeconds()):F2} (Start: {activeGE.StartWorldTime:F2}) {(activeGE.DurationHandle.IsValid() ? "Valid Handle" : "Invalid Handle")}";
+						if (activeGE.DurationHandle.IsValid())
+						{
+							durationStr += $"(Local Duration: {TimerManager.Instance.GetTimerRemaining(activeGE.DurationHandle):F2})";
+						}
+					}
+					if (activeGE.Period > 0)
+					{
+						durationStr += $"(Period: {activeGE.Period:F2})";
+					}
+
+					string stackString = string.Empty;
+					if (activeGE.Spec.StackCount > 1)
+					{
+						if (activeGE.Spec.Def.StackingType == GameplayEffectStackingType.AggregateBySource)
+						{
+							stackString = $"(Stack: {activeGE.Spec.StackCount}. From: {activeGE.Spec.EffectContext.InstigatorAbilitySystemComponent.AvatarActor.name}) ";
+						}
+						else
+						{
+							stackString = $"(Stack: {activeGE.Spec.StackCount}) ";
+						}
+					}
+
+					string LevelString = string.Empty;
+					if (activeGE.Spec.Level > 1)
+					{
+						LevelString = $"(Level: {activeGE.Spec.Level:F2})";
+					}
+
+					Debug.Log($"{activeGE.Spec.Def.name} ({durationStr}) {stackString} {LevelString}");
+
+					GameplayTagContainer grantedTags = new();
+					activeGE.Spec.GetAllGrantedTags(grantedTags);
+					if (grantedTags.Count > 0)
+					{
+						Debug.Log($"Granted Tags: {grantedTags}");
+					}
+
+					for (int modIdx = 0; modIdx < activeGE.Spec.Modifiers.Count; modIdx++)
+					{
+						if (activeGE.Spec.Def == null)
+						{
+							Debug.Log("null def! (Backwards campat?)");
+							continue;
+						}
+
+						ModifierSpec modSpec = activeGE.Spec.Modifiers[modIdx];
+						GameplayModifierInfo modInfo = activeGE.Spec.Def.Modifiers[modIdx];
+
+
+						Debug.Log($"Mod: {modInfo.Attribute}. {modInfo.ModifierOp}. {modSpec.EvaluatedMagnitude:F2}");
+					}
+				}
+			}
+
+			if (info.ShowAttributes)
+			{
+				foreach (AttributeSet set in SpawnedAttributes)
+				{
+					if (set == null)
+					{
+						continue;
+					}
+
+					List<GameplayAttribute> attributes = new();
+					AttributeSet.GetAttributesFromSetClass(set.GetType(), attributes);
+					foreach (GameplayAttribute attribute in attributes)
+					{
+						if (drawAttributes.Contains(attribute))
+						{
+							continue;
+						}
+
+						if (attribute.IsValid())
+						{
+							float value = GetNumericAttribute(attribute);
+							Debug.Log($"{attribute} ({value:F2})");
+						}
+					}
+				}
+			}
+
+			if (info.ShowAbilities)
+			{
+				foreach (GameplayAbilitySpec abilitySpec in ActivatableAbilities.Items)
+				{
+					if (abilitySpec.Ability == null)
+					{
+						continue;
+					}
+
+					string statusText = string.Empty;
+
+					GameplayAbility abilitySource = abilitySpec.GetPrimaryInstance();
+					if (abilitySource == null)
+					{
+						abilitySource = abilitySpec.Ability;
+					}
+
+					if (abilitySpec.IsActive)
+					{
+						statusText = $" (Active {abilitySpec.ActiveCount})";
+					}
+					else if (abilitySource.AssetTags.HasAny(BlockedAbilityTags.ExplicitGameplayTags))
+					{
+						statusText = $" (TagBlocked)";
+					}
+					else if (!abilitySource.CanActivateAbility(abilitySpec.Handle, AbilityActorInfo, null, null, out GameplayTagContainer failureTags))
+					{
+						statusText = $" (CantActivate {failureTags})";
+
+						float cooldown = abilitySpec.Ability.GetCooldownTimeRemaining(AbilityActorInfo);
+						if (cooldown > 0)
+						{
+							statusText += $"   Cooldown: {cooldown:F2}\n";
+						}
+					}
+
+					Debug.Log($"{abilitySpec.Ability.name} {statusText}");
+				}
+			}
+		}
+
+		#endregion
 	}
 }

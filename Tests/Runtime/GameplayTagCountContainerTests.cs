@@ -44,7 +44,7 @@ namespace GameplayAbilities.Tests
             Assert.IsTrue(tagCountContainer.GetExplicitTagCount(TestsDotGenericTagDotOne) == 0);
             Assert.IsTrue(tagCountContainer.GetExplicitTagCount(TestsDotGenericTagDotTwo) == 2);
 
-            GameplayTagContainer explicitTags = tagCountContainer.ExplicitTags;
+            GameplayTagContainer explicitTags = tagCountContainer.ExplicitGameplayTags;
             Assert.IsFalse(explicitTags.HasTagExact(TestsDotGenericTag));
             Assert.IsFalse(explicitTags.HasTagExact(TestsDotGenericTagDotOne));
             Assert.IsTrue(explicitTags.HasTagExact(TestsDotGenericTagDotTwo));

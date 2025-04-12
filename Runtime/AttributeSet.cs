@@ -292,6 +292,38 @@ namespace GameplayAbilities
 	[TypeCacheTarget]
 	public class AttributeSet : ScriptableObject
 	{
+		public GameObject OwningActor { get; set; }
+
+		public AbilitySystemComponent OwningAbilitySystemComponent
+		{
+			get
+			{
+				return AbilitySystemGlobals.GetAbilitySystemComponentFromActor(OwningActor);
+			}
+		}
+
+		public AbilitySystemComponent OwningAbilitySystemComponentChecked
+		{
+			get
+			{
+				AbilitySystemComponent result = OwningAbilitySystemComponent;
+				Debug.Assert(result != null);
+				return result;
+			}
+		}
+
+		public static void GetAttributesFromSetClass(Type attributeSetClass, List<GameplayAttribute> attributes)
+		{
+			IEnumerable<FieldInfo> fields = attributeSetClass
+								 .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+								 .Where(f => f.FieldType == typeof(float) || GameplayAttribute.IsGameplayAttributeDataField(f));
+
+			foreach (FieldInfo field in fields)
+			{
+				attributes.Add(new GameplayAttribute(field));
+			}
+		}
+
 		public virtual bool PreGameplayEffectExecute(GameplayEffectModCallbackData data)
 		{
 			return true;
@@ -304,6 +336,7 @@ namespace GameplayAbilities
 
 		public virtual void PreAttributeChange(in GameplayAttribute attribute, ref float newValue)
 		{
+
 		}
 
 		public virtual void PostAttributeChange(in GameplayAttribute attribute, float oldValue, float newValue)
@@ -324,26 +357,6 @@ namespace GameplayAbilities
 		public virtual void OnAttributeAggregatorCreated(in GameplayAttribute attribute, Aggregator aggregator)
 		{
 
-		}
-
-		public GameObject OwningActor { get; set; }
-
-		public AbilitySystemComponent OwningAbilitySystemComponent
-		{
-			get
-			{
-				return AbilitySystemGlobals.GetAbilitySystemComponentFromActor(OwningActor);
-			}
-		}
-
-		public AbilitySystemComponent OwningAbilitySystemComponentChecked
-		{
-			get
-			{
-				AbilitySystemComponent result = OwningAbilitySystemComponent;
-				Debug.Assert(result != null);
-				return result;
-			}
 		}
 	}
 }

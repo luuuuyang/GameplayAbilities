@@ -330,6 +330,11 @@ namespace GameplayAbilities
 			return InternalGetTimerRemaining(timerData);
 		}
 
+		public float GetTimeSeconds()
+		{
+			return InternalTime;
+		}
+
 		public void Tick(float deltaTime)
 		{
 			if (HasBeenTickedThisFrame())

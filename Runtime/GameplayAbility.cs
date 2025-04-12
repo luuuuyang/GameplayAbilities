@@ -506,6 +506,26 @@ namespace GameplayAbilities
 			}
 		}
 
+		public virtual float GetCooldownTimeRemaining(in GameplayAbilityActorInfo actorInfo)
+		{
+			if (actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent ASC))
+			{
+				GameplayTagContainer cooldownTags = GetCooldownTags();
+				if (cooldownTags is not null && cooldownTags.Count > 0)
+				{
+					GameplayEffectQuery query = GameplayEffectQuery.MakeQuery_MatchAnyOwningTags(cooldownTags);
+					List<float> durations = ASC.GetActiveEffectsTimeRemaining(query);
+					if (durations.Count > 0)
+					{
+						durations.Sort();
+						return durations[^1];
+					}
+				}
+			}
+
+			return 0;
+		}
+
 		public virtual void ApplyCooldown(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo)
 		{
 			GameplayEffect cooldownGE = Cooldown;

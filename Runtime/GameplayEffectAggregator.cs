@@ -189,6 +189,11 @@ namespace GameplayAbilities
 			}
 		}
 
+		public void GetAllAggregatorMods(GameplayModEvaluationChannel channel, Dictionary<GameplayModEvaluationChannel, List<AggregatorMod>[]> mods)
+		{
+			mods.Add(channel, Mods);
+		}
+
 		public void UpdateQualifiesOnAllMods(in AggregatorEvaluateParameters parameters)
 		{
 			for (int modOpIdx = 0; modOpIdx < Mods.Length; modOpIdx++)
@@ -293,6 +298,17 @@ namespace GameplayAbilities
 
 				AggregatorModChannel targetChannel = FindOrAddModChannel(sourceChannelEnum);
 				targetChannel.AddModsFrom(sourceChannel);
+			}
+		}
+
+		public void GetAllAggregatorMods(Dictionary<GameplayModEvaluationChannel, List<AggregatorMod>[]> mods)
+		{
+			foreach (var channelEntry in ModChannelsMap)
+			{
+				GameplayModEvaluationChannel curChannelEnum = channelEntry.Key;
+				AggregatorModChannel curChannel = channelEntry.Value;
+
+				curChannel.GetAllAggregatorMods(curChannelEnum, mods);
 			}
 		}
 	}
@@ -413,6 +429,11 @@ namespace GameplayAbilities
 		public void RemoveDependent(ActiveGameplayEffectHandle handle)
 		{
 			Dependents.Remove(handle);
+		}
+
+		public void GetAllAggregatorMods(Dictionary<GameplayModEvaluationChannel, List<AggregatorMod>[]> mods)
+		{
+			ModChannels.GetAllAggregatorMods(mods);
 		}
 
 		public void TakeSnapshotOf(in Aggregator aggregatorToSnapshot)

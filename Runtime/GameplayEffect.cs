@@ -43,6 +43,7 @@ namespace GameplayAbilities
 		public GameplayEffectAttributeCaptureDefinition BackingAttribute;
 		public AnimationCurve AttributeCurve;
 		public AttributeBasedFloatCalculationType AttributeCalculationType;
+		[ShowIf("@AbilitySystemGlobals.Instance.ShouldAllowGameplayModEvaluationChannels()")]
 		public GameplayModEvaluationChannel FinalChannel;
 		public GameplayTagContainer SourceTagFilter;
 		public GameplayTagContainer TargetTagFilter;
@@ -1304,7 +1305,7 @@ namespace GameplayAbilities
 			{
 				return false;
 			}
-			
+
 			return a.Handle == b.Handle;
 		}
 
@@ -2374,7 +2375,7 @@ namespace GameplayAbilities
 
 		public float GetWorldTime()
 		{
-			return UnityEngine.Time.time;
+			return TimerManager.Instance.GetTimeSeconds();
 		}
 
 		public void CheckDuration(ActiveGameplayEffectHandle handle)
@@ -2506,6 +2507,28 @@ namespace GameplayAbilities
 			}
 
 			return true;
+		}
+
+		public List<float> GetActiveEffectsTimeRemaining(in GameplayEffectQuery query)
+		{
+			float currentTime = GetWorldTime();
+
+			List<float> returnList = new();
+
+			foreach (ActiveGameplayEffect effect in GameplayEffects_Internal)
+			{
+				if (!query.Matches(effect))
+				{
+					continue;
+				}
+
+				float elapsed = currentTime - effect.StartWorldTime;
+				float duration = effect.Duration;
+
+				returnList.Add(duration - elapsed);
+			}
+
+			return returnList;
 		}
 
 		public ActiveGameplayEffect GetActiveGameplayEffect(ActiveGameplayEffectHandle handle)
