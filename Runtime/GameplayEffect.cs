@@ -2170,6 +2170,12 @@ namespace GameplayAbilities
 
 		public void SetAttributeBaseValue(GameplayAttribute attribute, float newBaseValue)
 		{
+			if (Owner == null)
+			{
+				Debug.LogWarning($"ActiveGameplayEffectsContainer.SetAttributeBaseValue: This ActiveGameplayEffectsContainer has an invalid owner. Unable to set attribute {attribute.AttributeName} to {newBaseValue}");
+				return;
+			}
+
 			AttributeSet set = Owner.GetAttributeSubobject(attribute.GetAttributeSetClass());
 			if (!set)
 			{
@@ -2202,7 +2208,7 @@ namespace GameplayAbilities
 			if (AttributeAggregatorMap.TryGetValue(attribute, out Aggregator aggregator))
 			{
 				oldBaseValue = aggregator.BaseValue;
-				aggregator.BaseValue = newBaseValue;
+				aggregator.SetBaseValue(newBaseValue);
 			}
 			else
 			{
@@ -2733,6 +2739,40 @@ namespace GameplayAbilities
 				AttributeValueChangeDelegates.Add(attribute, @delegate);
 			}
 			return @delegate;
+		}
+
+		public void DebugCyclicAggregatorBroadcasts(Aggregator triggeredAggregator)
+		{
+			foreach (var it in AttributeAggregatorMap)
+			{
+				Aggregator aggregator = it.Value;
+				GameplayAttribute attribute = it.Key;
+
+				if (aggregator != null)
+				{
+					if (aggregator == triggeredAggregator)
+					{
+						Debug.LogWarning($" Attribute {attribute} was the triggered aggregator ({Owner.name})");
+					}
+					else if (aggregator.BroadcastingDirtyCount > 0)
+					{
+						Debug.LogWarning($" Attribute {attribute} is broadcasting dirty ({Owner.name})");
+					}
+					else
+					{
+						continue;
+					}
+
+					foreach (ActiveGameplayEffectHandle handle in aggregator.Dependents)
+					{
+						AbilitySystemComponent asc = handle.OwningAbilitySystemComponent;
+						if (asc != null)
+						{
+							Debug.LogWarning($"  Dependant ({asc.name}) GE: {asc.GetGameplayEffectDefForHandle(handle).name}");
+						}
+					}
+				}
+			}
 		}
 	}
 

@@ -1,6 +1,7 @@
 using GameplayTags;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace GameplayAbilities
@@ -320,7 +321,7 @@ namespace GameplayAbilities
 		public OnAggregatorDirty OnDirty;
 		public OnAggregatorDirty OnDirtyRecursive;
 
-		public float BaseValue;
+		public float BaseValue { get; private set; }
 		public AggregatorModChannelContainer ModChannels = new();
 		public List<ActiveGameplayEffectHandle> Dependents = new();
 		public int BroadcastingDirtyCount;
@@ -329,6 +330,15 @@ namespace GameplayAbilities
 		{
 			BaseValue = baseValue;
 			BroadcastingDirtyCount = 0;
+		}
+
+		public void SetBaseValue(float newBaseValue, bool broadcastDirtyEvent = true)
+		{
+			BaseValue = newBaseValue;
+			if (broadcastDirtyEvent)
+			{
+				BroadcastOnDirty();
+			}
 		}
 
 		public float Evaluate(in AggregatorEvaluateParameters parameters)
@@ -442,7 +452,7 @@ namespace GameplayAbilities
 			ModChannels = aggregatorToSnapshot.ModChannels;
 		}
 
-		public void BroadcastOnDirty()
+		private void BroadcastOnDirty()
 		{
 			const int MAX_BROADCAST_DIRTY = 10;
 
@@ -451,6 +461,10 @@ namespace GameplayAbilities
 				OnDirtyRecursive?.Invoke(this);
 
 				Debug.LogWarning("Aggregator detected cyclic attribute dependencies. We are skipping a recursive dirty call. Its possible the resulting attribute values are not what you expect!");
+
+#if UNITY_EDITOR
+				UnityEngine.Object.FindObjectsByType<AbilitySystemComponent>(FindObjectsSortMode.None).ToList().ForEach(asc => asc.DebugCyclicAggregatorBroadcasts(this));
+#endif
 				return;
 			}
 

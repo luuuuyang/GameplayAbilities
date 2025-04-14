@@ -370,7 +370,7 @@ namespace GameplayAbilities
 		{
 			Debug.Assert(spec.Duration == GameplayEffectConstants.InstantApplication || spec.Period == GameplayEffectConstants.NoPeriod);
 
-			Debug.Log($"Executed {spec.Def}");
+			Debug.Log($"Executed {spec.Def.name}");
 			foreach (GameplayModifierInfo modifier in spec.Def.Modifiers)
 			{
 				float magnitude = 0;
@@ -384,6 +384,17 @@ namespace GameplayAbilities
 		public void CheckDurationExpired(ActiveGameplayEffectHandle handle)
 		{
 			ActiveGameplayEffects.CheckDuration(handle);
+		}
+
+		public GameplayEffect GetGameplayEffectDefForHandle(ActiveGameplayEffectHandle handle)
+		{
+			ActiveGameplayEffect activeGE = ActiveGameplayEffects.GetActiveGameplayEffect(handle);
+			if (activeGE is not null)
+			{
+				return activeGE.Spec.Def;
+			}
+
+			return null;
 		}
 
 		#region GameplayTags 
@@ -1905,6 +1916,11 @@ namespace GameplayAbilities
 					Debug.Log($"{abilitySpec.Ability.name} {statusText}");
 				}
 			}
+		}
+		
+		public void DebugCyclicAggregatorBroadcasts(Aggregator aggregator)
+		{
+			ActiveGameplayEffects.DebugCyclicAggregatorBroadcasts(aggregator);
 		}
 
 		#endregion
