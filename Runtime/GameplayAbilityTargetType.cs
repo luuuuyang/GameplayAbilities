@@ -1,13 +1,13 @@
+using System;
 using System.Collections.Generic;
 using GameplayTags;
-using Sirenix.Utilities;
 using UnityEngine;
 
 namespace GameplayAbilities
 {
     public class GameplayAbilityTargetData
     {
-        public virtual List<GameObject> Actors { get; set; } = new();
+        public virtual List<WeakReference<GameObject>> Actors { get; set; } = new();
 
         public List<ActiveGameplayEffectHandle> ApplyGameplayEffect(in GameplayEffect gameplayEffect, in GameplayEffectContextHandle effectContext, float level)
         {
@@ -19,24 +19,33 @@ namespace GameplayAbilities
         {
             List<ActiveGameplayEffectHandle> appliedHandles = new();
 
-            List<GameObject> actors = Actors;
+            if (spec.EffectContext == null || spec.EffectContext.InstigatorAbilitySystemComponent == null)
+            {
+                return appliedHandles;
+            }
+
+            List<WeakReference<GameObject>> actors = Actors;
 
             appliedHandles.Capacity = actors.Count;
 
-            foreach (GameObject targetActor in actors)
+            foreach (WeakReference<GameObject> targetActor in actors)
             {
-                AbilitySystemComponent targetComponent = targetActor.GetComponent<AbilitySystemComponent>();
-                if (targetComponent != null)
+                if (targetActor.TryGetTarget(out GameObject gameObject))
                 {
-                    GameplayEffectSpec specToApply = new(spec);
-                    GameplayEffectContextHandle effectContext = specToApply.EffectContext.Duplicate();
-                    specToApply.SetContext(effectContext);
+                    AbilitySystemComponent targetComponent = AbilitySystemBlueprintLibrary.GetAbilitySystemComponent(gameObject);
+                    if (targetComponent != null)
+                    {
+                        GameplayEffectSpec specToApply = new(spec);
+                        GameplayEffectContextHandle effectContext = specToApply.EffectContext.Duplicate();
+                        specToApply.SetContext(effectContext);
 
-                    AddTargetDataToContext(effectContext, false);
+                        AddTargetDataToContext(effectContext, false);
 
-                    appliedHandles.Add(effectContext.InstigatorAbilitySystemComponent.ApplyGameplayEffectSpecToTarget(specToApply, targetComponent));
+                        appliedHandles.Add(effectContext.InstigatorAbilitySystemComponent.ApplyGameplayEffectSpecToTarget(specToApply, targetComponent));
+                    }
                 }
             }
+
             return appliedHandles;
         }
 
@@ -44,10 +53,10 @@ namespace GameplayAbilities
         {
             if (includeActorArray)
             {
-                List<GameObject> actors = Actors;
-                if (actors.Count > 0)
+                List<WeakReference<GameObject>> weakArray = Actors;
+                if (weakArray.Count > 0)
                 {
-                    context.AddActors(actors);
+                    context.AddActors(weakArray);
                 }
             }
         }
@@ -57,9 +66,47 @@ namespace GameplayAbilities
     {
         public List<GameplayAbilityTargetData> Data = new();
 
+        public GameplayAbilityTargetDataHandle()
+        {
+        }
+
         public GameplayAbilityTargetDataHandle(GameplayAbilityTargetData data)
         {
             Data.Add(data);
+        }
+
+        public void Clear()
+        {
+            Data.Clear();
+        }
+
+        public int Count => Data.Count;
+
+        public bool IsValid(int index)
+        {
+            return index < Data.Count && Data[index] != null;
+        }
+
+        public GameplayAbilityTargetData this[int index]
+        {
+            get
+            {
+                if (!IsValid(index))
+                {
+                    throw new IndexOutOfRangeException("Index is out of range");
+                }
+                return Data[index];
+            }
+        }
+
+        public void Add(GameplayAbilityTargetData data)
+        {
+            Data.Add(data);
+        }
+
+        public void AddRange(in GameplayAbilityTargetDataHandle data)
+        {
+            Data.AddRange(data.Data);
         }
 
         public static bool operator ==(GameplayAbilityTargetDataHandle a, GameplayAbilityTargetDataHandle b)
@@ -90,12 +137,10 @@ namespace GameplayAbilities
 
     public class GameplayAbilityTargetData_ActorArray : GameplayAbilityTargetData
     {
-        public List<GameObject> TargetActorArray = new();
+        public List<WeakReference<GameObject>> TargetActorArray = new();
 
-        public override List<GameObject> Actors => TargetActorArray;
+        public override List<WeakReference<GameObject>> Actors => TargetActorArray;
     }
-
-    
 
     public delegate void AbilityTargetDataSetDelegate(in GameplayAbilityTargetDataHandle targetData, GameplayTag gameplayTag);
 }

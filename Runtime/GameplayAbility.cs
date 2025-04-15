@@ -306,7 +306,7 @@ namespace GameplayAbilities
 		{
 			bool validHandle = handle.IsValid();
 			bool validActorInfoPieces = actorInfo != null && actorInfo.AbilitySystemComponent != null;
-			
+
 			actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent);
 			bool validSpecFound = validActorInfoPieces && abilitySystemComponent.FindAbilitySpecFromHandle(handle) != null;
 
@@ -533,6 +533,14 @@ namespace GameplayAbilities
 				ApplyGameplayEffectToOwner(handle, actorInfo, cooldownGE, GetAbilityLevel(handle, actorInfo));
 			}
 		}
+		
+		protected virtual void EndAbility()
+		{
+			Debug.Assert(CurrentActorInfo != null);
+
+			const bool wasCancelled = false;
+			EndAbility(CurrentSpecHandle, CurrentActorInfo, wasCancelled);
+		}
 
 		protected ActiveGameplayEffectHandle ApplyGameplayEffectToOwner(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo, GameplayEffect gameplayEffect, int gameplayEffectLevel, int stacks = 1)
 		{
@@ -561,34 +569,44 @@ namespace GameplayAbilities
 			return new ActiveGameplayEffectHandle();
 		}
 
-		protected List<ActiveGameplayEffectHandle> ApplyGameplayEffectToTarget(in GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, in GameplayAbilityTargetDataHandle target, GameplayEffect gameplayEffect, float gameplayEffectLevel, int stack)
+		protected List<ActiveGameplayEffectHandle> ApplyGameplayEffectToTarget(GameplayAbilityTargetDataHandle target, GameplayEffect gameplayEffectClass, float gameplayEffectLevel = 1, int stacks = 1)
 		{
-			List<ActiveGameplayEffectHandle> effectHandles = new List<ActiveGameplayEffectHandle>();
+			return ApplyGameplayEffectToTarget(CurrentSpecHandle, CurrentActorInfo, target, gameplayEffectClass, gameplayEffectLevel, stacks);
+		}
 
-			if (gameplayEffect == null)
+		protected List<ActiveGameplayEffectHandle> ApplyGameplayEffectToTarget(in GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, in GameplayAbilityTargetDataHandle target, GameplayEffect gameplayEffectClass, float gameplayEffectLevel, int stacks = 1)
+		{
+			List<ActiveGameplayEffectHandle> effectHandles = new();
+
+			if (gameplayEffectClass == null)
 			{
-				Debug.LogError($"ApplyGameplayEffectToTarget called on ability %s with no GameplayEffect.");
+				Debug.LogError($"ApplyGameplayEffectToTarget called on ability {name} with no GameplayEffect.");
 			}
 			else
 			{
-				GameplayEffectSpecHandle specHandle = MakeOutgoingGameplayEffectSpec(handle, actorInfo, gameplayEffect, gameplayEffectLevel);
+				GameplayEffectSpecHandle specHandle = MakeOutgoingGameplayEffectSpec(handle, actorInfo, gameplayEffectClass, gameplayEffectLevel);
 				if (specHandle.Data != null)
 				{
-					specHandle.Data.StackCount = stack;
-					effectHandles.AddRange(ApplyGameplayEffectToTarget(handle, actorInfo, specHandle, target));
+					specHandle.Data.StackCount = stacks;
+					effectHandles.AddRange(ApplyGameplayEffectSpecToTarget(handle, actorInfo, specHandle, target));
 				}
 				else
 				{
-					Debug.LogWarning($"GameplayAbility::ApplyGameplayEffectToTarget failed to create valid spec handle. Ability: %s");
+					Debug.LogWarning($"GameplayAbility::ApplyGameplayEffectToTarget failed to create valid spec handle. Ability: {name}");
 				}
 			}
 
 			return effectHandles;
 		}
 
-		protected List<ActiveGameplayEffectHandle> ApplyGameplayEffectToTarget(in GameplayAbilitySpecHandle abilityHandle, in GameplayAbilityActorInfo actorInfo, in GameplayEffectSpecHandle specHandle, in GameplayAbilityTargetDataHandle targetData)
+		protected List<ActiveGameplayEffectHandle> ApplyGameplayEffectSpecToTarget(in GameplayEffectSpecHandle specHandle, GameplayAbilityTargetDataHandle targetData)
 		{
-			List<ActiveGameplayEffectHandle> effectHandles = new List<ActiveGameplayEffectHandle>();
+			return ApplyGameplayEffectSpecToTarget(CurrentSpecHandle, CurrentActorInfo, specHandle, targetData);
+		}
+
+		protected List<ActiveGameplayEffectHandle> ApplyGameplayEffectSpecToTarget(in GameplayAbilitySpecHandle abilityHandle, in GameplayAbilityActorInfo actorInfo, in GameplayEffectSpecHandle specHandle, in GameplayAbilityTargetDataHandle targetData)
+		{
+			List<ActiveGameplayEffectHandle> effectHandles = new();
 
 			if (specHandle.IsValid())
 			{
@@ -600,7 +618,7 @@ namespace GameplayAbilities
 					}
 					else
 					{
-						Debug.LogWarning($"ApplyGameplayEffectToTarget: Invalid target data: {data}");
+						Debug.LogWarning($"GameplayAbility::ApplyGameplayEffectSpecToTarget invalid target data passed in. Ability: {name}");
 					}
 				}
 			}
@@ -698,14 +716,14 @@ namespace GameplayAbilities
 
 				if (abilitySpec.SourceObject.TryGetTarget(out UnityEngine.Object sourceObject))
 				{
-                    if (sourceObject is IGameplayTagAssetInterface sourceObjAsTagInterface)
-                    {
-                        GameplayTagContainer sourceObjTags = new();
-                        sourceObjAsTagInterface.GetOwnedGameplayTags(sourceObjTags);
+					if (sourceObject is IGameplayTagAssetInterface sourceObjAsTagInterface)
+					{
+						GameplayTagContainer sourceObjTags = new();
+						sourceObjAsTagInterface.GetOwnedGameplayTags(sourceObjTags);
 
-                        capturedSourceTags.AppendTags(sourceObjTags);
-                    }
-                }
+						capturedSourceTags.AppendTags(sourceObjTags);
+					}
+				}
 
 				spec.MergeSetByCallerMagnitude(abilitySpec.SetByCallerTagMagnitudes);
 			}

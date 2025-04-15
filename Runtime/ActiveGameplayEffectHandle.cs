@@ -43,14 +43,25 @@ namespace GameplayAbilities
 
 		public static ActiveGameplayEffectHandle GenerateNewHandle(AbilitySystemComponent owningComponent)
 		{
-			ActiveGameplayEffectHandle newHandle = new ActiveGameplayEffectHandle(GHandleID++);
+			ActiveGameplayEffectHandle newHandle = new(GHandleID++);
 
 			GlobalActiveGameplayEffectHandles.Map.Add(newHandle, owningComponent);
 
 			return newHandle;
 		}
 
-		public AbilitySystemComponent OwningAbilitySystemComponent => GlobalActiveGameplayEffectHandles.Map[this];
+		public AbilitySystemComponent OwningAbilitySystemComponent
+		{
+			get
+			{
+				if (GlobalActiveGameplayEffectHandles.Map.TryGetValue(this, out var abilitySystemComponent))
+				{
+					return abilitySystemComponent;
+				}
+
+				return null;
+			}
+		}
 
 		public void RemoveFromGlobalMap()
 		{

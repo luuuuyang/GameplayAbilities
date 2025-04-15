@@ -204,17 +204,14 @@ namespace GameplayAbilities
             SourceObject.SetTarget(sourceObject);
         }
 
-        public void AddActors(List<GameObject> actors, bool reset = false)
+        public void AddActors(List<WeakReference<GameObject>> actors, bool reset = false)
         {
             if (reset && Actors.Count > 0)
             {
                 Actors.Clear();
             }
 
-            foreach (GameObject actor in actors)
-            {
-                Actors.Add(new WeakReference<GameObject>(actor));
-            }
+            Actors.AddRange(actors);
         }
 
         public void GetOwnedGameplayTags(GameplayTagContainer actorTagContainer, GameplayTagContainer specTagContainer)
@@ -314,7 +311,7 @@ namespace GameplayAbilities
             }
         }
 
-        public void AddActors(List<GameObject> actors, bool reset = false)
+        public void AddActors(List<WeakReference<GameObject>> actors, bool reset = false)
         {
             if (IsValid)
             {
