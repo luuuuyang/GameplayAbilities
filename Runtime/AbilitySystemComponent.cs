@@ -711,7 +711,7 @@ namespace GameplayAbilities
 			AbilityFailedCallbacks?.Invoke(ability, failureReason);
 		}
 
-		public virtual void NotifyAbilityEnd(GameplayAbilitySpecHandle handle, GameplayAbility ability, bool wasCancelled)
+		public virtual void NotifyAbilityEnded(GameplayAbilitySpecHandle handle, GameplayAbility ability, bool wasCancelled)
 		{
 			Debug.Assert(ability != null);
 			GameplayAbilitySpec spec = FindAbilitySpecFromHandle(handle);
@@ -720,12 +720,16 @@ namespace GameplayAbilities
 				return;
 			}
 
-			Debug.Log($"{this.name}: Ended [{handle}] {(spec.GetPrimaryInstance() ? spec.GetPrimaryInstance().name : ability.name)}. Level: {spec.Level}. WasCancelled: {wasCancelled}");
+			Debug.Log($"{name}: Ended [{handle}] {(spec.GetPrimaryInstance() ? spec.GetPrimaryInstance().name : ability.name)}. Level: {spec.Level}. WasCancelled: {wasCancelled}");
 
 			Debug.Assert(spec.ActiveCount > 0, $"NotifyAbilityEnded called when the Spec->ActiveCount <= 0 for ability {ability.name}");
 			if (spec.ActiveCount > 0)
 			{
 				spec.ActiveCount--;
+			}
+			else
+			{
+				Debug.LogWarning($"NotifyAbilityEnded called when the Spec->ActiveCount <= 0 for ability {ability.name}");
 			}
 
 			AbilityEndedCallbacks?.Invoke(ability);

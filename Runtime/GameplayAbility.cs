@@ -465,7 +465,7 @@ namespace GameplayAbilities
 						abilitySystemComponent.ApplyAbilityBlockAndCancelTags(AssetTags, this, false, BlockAbilitiesWithTags, false, CancelAbilitiesWithTags);
 					}
 
-					abilitySystemComponent.NotifyAbilityEnd(handle, this, wasCancelled);
+					abilitySystemComponent.NotifyAbilityEnded(handle, this, wasCancelled);
 				}
 			}
 		}
