@@ -389,18 +389,18 @@ namespace GameplayAbilities
         public ActiveGameplayEffect ActiveEffect;
     }
 
-    public delegate void OnGivenActiveGameplayEffectRemoved(in ActiveGameplayEffect effect);
-    public delegate void OnActiveGameplayEffectRemoved_Info(GameplayEffectRemovalInfo removalInfo);
-    public delegate void OnActiveGameplayEffectStackChange(ActiveGameplayEffectHandle handle, int newStackCount, int previousStackCount);
-    public delegate void OnActiveGameplayEffectTimeChange(ActiveGameplayEffectHandle handle, float newStartTime, float newDuration);
-    public delegate void OnActiveGameplayEffectInhibitionChanged(ActiveGameplayEffectHandle handle, bool isInhibited);
+    public class OnGivenActiveGameplayEffectRemoved : UnityEvent<ActiveGameplayEffect> { }
+    public class OnActiveGameplayEffectRemoved_Info : UnityEvent<GameplayEffectRemovalInfo> { }
+    public class OnActiveGameplayEffectStackChange : UnityEvent<ActiveGameplayEffectHandle, int, int> { }
+    public class OnActiveGameplayEffectTimeChange : UnityEvent<ActiveGameplayEffectHandle, float, float> { }
+    public class OnActiveGameplayEffectInhibitionChanged : UnityEvent<ActiveGameplayEffectHandle, bool> { }
 
     public class ActiveGameplayEffectEvents
     {
-        public OnActiveGameplayEffectRemoved_Info OnEffectRemoved;
-        public OnActiveGameplayEffectStackChange OnStackChanged;
-        public OnActiveGameplayEffectTimeChange OnTimeChanged;
-        public OnActiveGameplayEffectInhibitionChanged OnInhibitionChanged;
+        public OnActiveGameplayEffectRemoved_Info OnEffectRemoved = new();
+        public OnActiveGameplayEffectStackChange OnStackChanged = new();
+        public OnActiveGameplayEffectTimeChange OnTimeChanged = new();
+        public OnActiveGameplayEffectInhibitionChanged OnInhibitionChanged = new();
     }
 
     public class OnGameplayAttributeChange : UnityEvent<float, GameplayEffectModCallbackData> { }

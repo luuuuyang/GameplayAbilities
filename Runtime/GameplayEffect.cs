@@ -1552,7 +1552,7 @@ namespace GameplayAbilities
 	public class ActiveGameplayEffectsContainer
 	{
 		public AbilitySystemComponent Owner;
-		public OnGivenActiveGameplayEffectRemoved OnActiveGameplayEffectRemovedDelegate;
+		public OnGivenActiveGameplayEffectRemoved OnActiveGameplayEffectRemovedDelegate = new();
 		private List<ActiveGameplayEffect> GameplayEffects_Internal = new();
 		public Dictionary<GameplayAttribute, Aggregator> AttributeAggregatorMap = new();
 

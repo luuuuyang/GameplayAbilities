@@ -1,8 +1,10 @@
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace GameplayAbilities
 {
+    [LabelText("Immunity (Prevent Other GEs)")]
     public class ImmunityGameplayEffectComponent : GameplayEffectComponent
     {
         public List<GameplayEffectQuery> ImmunityQueries;
@@ -12,22 +14,22 @@ namespace GameplayAbilities
             ActiveGameplayEffectHandle activeGEHandle = activeGE.Handle;
             AbilitySystemComponent ownerASC = activeGEContainer.Owner;
 
-            GameplayEffectApplicationQuery boundQuery = ownerASC.GameplayEffectApplicationQueries[0];
-            boundQuery += (in ActiveGameplayEffectsContainer activeGEContainer, in GameplayEffectSpec geSpecToConsider) => AllowGameplayEffectApplication(activeGEContainer, geSpecToConsider, activeGEHandle);
+            bool boundQuery(in ActiveGameplayEffectsContainer activeGEContainer, in GameplayEffectSpec GESpecToConsider) => AllowGameplayEffectApplication(activeGEContainer, GESpecToConsider, activeGEHandle);
+            ownerASC.GameplayEffectApplicationQueries.Add(boundQuery);
 
-            activeGE.EventSet.OnEffectRemoved += (GameplayEffectRemovalInfo removalInfo) =>
+            activeGE.EventSet.OnEffectRemoved.AddListener(removalInfo =>
             {
                 if (ownerASC)
                 {
-                    List<GameplayEffectApplicationQuery> geAppQueries = ownerASC.GameplayEffectApplicationQueries;
-                    geAppQueries.Remove(boundQuery);
+                    List<GameplayEffectApplicationQuery> GEAppQueries = ownerASC.GameplayEffectApplicationQueries;
+                    GEAppQueries.Remove(boundQuery);
                 }
-            };
+            });
 
             return true;
         }
 
-        protected bool AllowGameplayEffectApplication(in ActiveGameplayEffectsContainer activeGEContainer, in GameplayEffectSpec geSpecToConsider, ActiveGameplayEffectHandle immunityActiveGEHandle)
+        protected bool AllowGameplayEffectApplication(in ActiveGameplayEffectsContainer activeGEContainer, in GameplayEffectSpec GESpecToConsider, ActiveGameplayEffectHandle immunityActiveGEHandle)
         {
             AbilitySystemComponent ASC = activeGEContainer.Owner;
             if (ASC != immunityActiveGEHandle.OwningAbilitySystemComponent)
@@ -37,16 +39,16 @@ namespace GameplayAbilities
             }
 
             ActiveGameplayEffect activeGE = ASC.GetActiveGameplayEffect(immunityActiveGEHandle);
-            if (activeGE == null || activeGE.IsInhibited)
+            if (activeGE is null || activeGE.IsInhibited)
             {
                 return true;
             }
 
             foreach (GameplayEffectQuery immunityQuery in ImmunityQueries)
             {
-                if (!immunityQuery.IsEmpty() && immunityQuery.Matches(geSpecToConsider))
+                if (!immunityQuery.IsEmpty() && immunityQuery.Matches(GESpecToConsider))
                 {
-                    ASC.OnImmunityBlockGameplayEffectDelegate?.Invoke(geSpecToConsider, activeGE);
+                    ASC.OnImmunityBlockGameplayEffectDelegate?.Invoke(GESpecToConsider, activeGE);
                     return false;
                 }
             }

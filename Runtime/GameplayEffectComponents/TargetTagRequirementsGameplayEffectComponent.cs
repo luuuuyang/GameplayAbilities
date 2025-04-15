@@ -64,7 +64,7 @@ namespace GameplayAbilities
 					allBoundEvents.Add(new(tag, call));
 				}
 
-				eventSet.OnEffectRemoved += (GERemovalInfo) => OnGameplayEffectRemoved(GERemovalInfo, ASC, allBoundEvents);
+				eventSet.OnEffectRemoved.AddListener(GERemovalInfo => OnGameplayEffectRemoved(GERemovalInfo, ASC, allBoundEvents));
 			}
 			else
 			{

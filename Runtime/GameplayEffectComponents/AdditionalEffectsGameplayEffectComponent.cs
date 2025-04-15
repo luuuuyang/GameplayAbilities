@@ -1,8 +1,10 @@
 using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 namespace GameplayAbilities
 {
+    [LabelText("Additional Effects")]
     public class AdditionalEffectsGameplayEffectComponent : GameplayEffectComponent
     {
         public bool OnApplicationCopyDataFromOriginalSpec = false;
@@ -13,7 +15,7 @@ namespace GameplayAbilities
 
         public override bool OnActiveGameplayEffectAdded(ActiveGameplayEffectsContainer activeGEContainer, ActiveGameplayEffect activeGE)
         {
-            activeGE.EventSet.OnEffectRemoved += (GameplayEffectRemovalInfo removalInfo) => OnActiveGameplayEffectRemoved(removalInfo, activeGEContainer);
+            activeGE.EventSet.OnEffectRemoved.AddListener(removalInfo => OnActiveGameplayEffectRemoved(removalInfo, activeGEContainer));
             return true;
         }
 
@@ -25,28 +27,29 @@ namespace GameplayAbilities
                 return;
             }
 
-            float geLevel = GESpec.Level;
-            GameplayEffectContextHandle geContextHandle = GESpec.EffectContext;
+            float GELevel = GESpec.Level;
+            GameplayEffectContextHandle GEContextHandle = GESpec.EffectContext;
 
             List<GameplayEffectSpecHandle> targetEffectSpecs = new();
             foreach (ConditionalGameplayEffect conditionalEffect in OnApplicationGameplayEffects)
             {
-                GameplayEffect gameplayEffect = conditionalEffect.Effect;
-                if (gameplayEffect == null)
+                GameplayEffect gameplayEffectDef = conditionalEffect.Effect;
+                if (gameplayEffectDef == null)
                 {
                     continue;
                 }
 
-                if (conditionalEffect.CanApply(GESpec.CapturedSourceTags.ActorTags, geLevel))
+                if (conditionalEffect.CanApply(GESpec.CapturedSourceTags.ActorTags, GELevel))
                 {
                     GameplayEffectSpecHandle specHandle;
                     if (OnApplicationCopyDataFromOriginalSpec)
                     {
                         specHandle = new GameplayEffectSpecHandle(new GameplayEffectSpec());
+                        specHandle.Data.InitializeFromLinkedSpec(gameplayEffectDef, GESpec);
                     }
                     else
                     {
-                        specHandle = conditionalEffect.CreateSpec(geContextHandle, geLevel);
+                        specHandle = conditionalEffect.CreateSpec(GEContextHandle, GELevel);
                     }
 
                     if (specHandle.IsValid())
@@ -57,7 +60,6 @@ namespace GameplayAbilities
             }
 
             targetEffectSpecs.AddRange(GESpec.TargetEffectSpecs);
-
 
             AbilitySystemComponent appliedToASC = activeGEContainer.Owner;
             foreach (GameplayEffectSpecHandle targetSpec in targetEffectSpecs)

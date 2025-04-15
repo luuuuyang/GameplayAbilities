@@ -139,8 +139,8 @@ namespace GameplayAbilities
 
         public override bool OnActiveGameplayEffectAdded(ActiveGameplayEffectsContainer activeGEContainer, ActiveGameplayEffect activeGE)
         {
-			activeGE.EventSet.OnEffectRemoved += OnActiveGameplayEffectRemoved;
-			activeGE.EventSet.OnInhibitionChanged += OnInhibitionChanged;
+			activeGE.EventSet.OnEffectRemoved.AddListener(OnActiveGameplayEffectRemoved);
+			activeGE.EventSet.OnInhibitionChanged.AddListener(OnInhibitionChanged);
             return true;
         }
 

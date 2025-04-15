@@ -1,11 +1,9 @@
 using UnityEngine;
-
-#if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
-#endif
 
 namespace GameplayAbilities
 {
+	[LabelText("Asset Tags (on Gameplay Effect)")]
 	public class AssetTagsGameplayEffectComponent : GameplayEffectComponent
 	{
 		public InheritedTagContainer ConfiguredAssetTags => InheritableAssetTags;
@@ -17,7 +15,7 @@ namespace GameplayAbilities
 		public override void OnGameplayEffectChanged()
 		{
 			base.OnGameplayEffectChanged();
-			ApplyAssetTagChanges();
+			SetAndApplyAssetTagChanges(InheritableAssetTags);
 		}
 
 		public void SetAndApplyAssetTagChanges(in InheritedTagContainer tagContainerMods)
