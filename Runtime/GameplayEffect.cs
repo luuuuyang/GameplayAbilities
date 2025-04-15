@@ -22,6 +22,7 @@ namespace GameplayAbilities
 		AttributeMagnitude,
 		AttributeBaseValue,
 		AttributeBonusMagnitude,
+		[ShowIf("@AbilitySystemGlobals.Instance.ShouldAllowGameplayModEvaluationChannels()")]
 		AttributeMagnitudeEvaluatedUpToChannel
 	}
 
@@ -492,6 +493,7 @@ namespace GameplayAbilities
 		public GameplayEffectModifierMagnitude ModifierMagnitude = new();
 		[ShowIf("@AbilitySystemGlobals.Instance.ShouldAllowGameplayModEvaluationChannels()")]
 		public GameplayModEvaluationChannelSettings EvaluationChannelSettings;
+		// used for Execution or MMC
 		public GameplayTagRequirements SourceTags;
 		public GameplayTagRequirements TargetTags;
 
@@ -857,6 +859,7 @@ namespace GameplayAbilities
 		public List<GameplayAbilitySpecDef> GrantedAbilitySpecs = new();
 		public Dictionary<string, float> SetByCallerNameMagnitudes = new();
 		public Dictionary<GameplayTag, float> SetByCallerTagMagnitudes = new();
+
 		public float Level
 		{
 			get;
@@ -1782,7 +1785,7 @@ namespace GameplayAbilities
 
 			Debug.Log($"Added {effectDef}");
 
-			AddCustomMagnitudeExternalDependecies(effect);
+			AddCustomMagnitudeExternalDependencies(effect);
 
 			bool active = effectDef.OnAddedToActiveContainer(this, effect);
 
@@ -1827,6 +1830,14 @@ namespace GameplayAbilities
 		public ActiveGameplayEffect GetActiveGameplayEffect(int index)
 		{
 			return GameplayEffects_Internal[index];
+		}
+
+		public void GetAllActiveGameplayEffectSpecs(List<GameplayEffectSpec> outSpecCopies)
+		{
+			foreach (ActiveGameplayEffect activeEffect in GameplayEffects_Internal)
+			{
+				outSpecCopies.Add(activeEffect.Spec);
+			}
 		}
 
 		public bool RemoveActiveGameplayEffect(ActiveGameplayEffectHandle handle, int stacksToRemove = -1)
@@ -1931,7 +1942,7 @@ namespace GameplayAbilities
 					RemoveActiveGameplayEffectGrantedTagsAndModifiers(effect);
 				}
 
-				RemoveCustomMagnitudeExternalDependecies(effect);
+				RemoveCustomMagnitudeExternalDependencies(effect);
 			}
 			else
 			{
@@ -1943,12 +1954,23 @@ namespace GameplayAbilities
 			OnActiveGameplayEffectRemovedDelegate?.Invoke(effect);
 		}
 
-		public void AddCustomMagnitudeExternalDependecies(ActiveGameplayEffect effect)
+		private void AddCustomMagnitudeExternalDependencies(ActiveGameplayEffect effect)
 		{
-
+			// GameplayEffect GEDef = effect.Spec.Def;
+			// if (GEDef != null)
+			// {
+			// 	foreach(GameplayModifierInfo curMod in GEDef.Modifiers
+			// 	{
+			// 		GameplayModMagnitudeCalculation modCalcClass= curMod.ModifierMagnitude.GetCustomMagnitudeCalculationClass();
+			// 		if (modCalcClass != null)
+			// 		{
+			// 			curMod.ModifierMagnitude.CalculationClassMagnitude = modCalcClass;
+			// 		}
+			// 	}
+			// }
 		}
 
-		public void RemoveCustomMagnitudeExternalDependecies(ActiveGameplayEffect effect)
+		private void RemoveCustomMagnitudeExternalDependencies(ActiveGameplayEffect effect)
 		{
 
 		}
@@ -2001,6 +2023,21 @@ namespace GameplayAbilities
 			for (int i = 0; i < specToUse.Modifiers.Count; i++)
 			{
 				GameplayModifierInfo modDef = specToUse.Def.Modifiers[i];
+
+				bool useModifierTagRequirementsOnAllGameplayEffects = true;
+				if (useModifierTagRequirementsOnAllGameplayEffects)
+				{
+					if (!modDef.SourceTags.IsEmpty() && !modDef.SourceTags.RequirementsMet(spec.CapturedSourceTags.ActorTags))
+					{
+						continue;
+					}
+
+					if (!modDef.TargetTags.IsEmpty() && !modDef.TargetTags.RequirementsMet(spec.CapturedTargetTags.ActorTags))
+					{
+						continue;
+					}
+				}
+
 				GameplayModifierEvaluatedData evalData = new(modDef.Attribute, modDef.ModifierOp, specToUse.GetModifierMagnitude(i, true));
 				modifierSuccessfullyExecuted |= InternalExecuteMod(specToUse, evalData);
 			}
@@ -2013,7 +2050,7 @@ namespace GameplayAbilities
 
 				GameplayEffectCustomExecutionParams executionParams = new GameplayEffectCustomExecutionParams();
 				GameplayEffectCustomExecutionOutput executionOutput = new GameplayEffectCustomExecutionOutput();
-				// curExecDef.CalculationClass.Execute(executionParams, out executionOutput);
+				curExecDef.CalculationClass.Execute(executionParams, out executionOutput);
 
 				runConditionalEffects = executionOutput.ShouldTriggerConditionalGameplayEffects;
 
@@ -2670,8 +2707,21 @@ namespace GameplayAbilities
 			}
 		}
 
-		public void OnAttributeAggregatorDirty(Aggregator aggregator, GameplayAttribute attribute, bool fromRecursiveCall)
+		public void CleanupAttributeAggregator(in GameplayAttribute attribute)
 		{
+			if (AttributeAggregatorMap.TryGetValue(attribute, out Aggregator aggregator))
+			{
+				aggregator.OnDirty = null;
+				aggregator.OnDirtyRecursive = null;
+
+				AttributeAggregatorMap.Remove(attribute);
+			}
+		}
+
+		public void OnAttributeAggregatorDirty(Aggregator aggregator, GameplayAttribute attribute, bool fromRecursiveCall = false)
+		{
+			Debug.Assert(AttributeAggregatorMap.ContainsKey(attribute));
+
 			AggregatorEvaluateParameters evaluationParameters = new();
 
 			float newValue = aggregator.Evaluate(evaluationParameters);
@@ -2743,7 +2793,7 @@ namespace GameplayAbilities
 
 		public void DebugCyclicAggregatorBroadcasts(Aggregator triggeredAggregator)
 		{
-			foreach (var it in AttributeAggregatorMap)
+			foreach (KeyValuePair<GameplayAttribute, Aggregator> it in AttributeAggregatorMap)
 			{
 				Aggregator aggregator = it.Value;
 				GameplayAttribute attribute = it.Key;
@@ -2815,6 +2865,21 @@ namespace GameplayAbilities
 
 		[FoldoutGroup("GameplayEffect")]
 		public List<GameplayEffectExecutionDefinition> Executions = new();
+
+		[FoldoutGroup("GameplayEffect")]
+		[HideInInspector]
+		[Obsolete("Conditional Gameplay Effects is deprecated. Use AdditionalEffectsGameplayEffectComponent instead")]
+		public List<ConditionalGameplayEffect> ConditionalGameplayEffects = new();
+
+		[FoldoutGroup("Expiration")]
+		[HideInInspector]
+		[Obsolete("Premature Expiration Effect Classes is deprecated. Use AdditionalEffectsGameplayEffectComponent instead")]
+		public List<GameplayEffect> PrematureExpirationEffectClasses = new();
+
+		[FoldoutGroup("Expiration")]
+		[HideInInspector]
+		[Obsolete("Routine Expiration Effect Classes is deprecated. Use AdditionalEffectsGameplayEffectComponent instead")]
+		public List<GameplayEffect> RoutineExpirationEffectClasses = new();
 
 		[FoldoutGroup("GameplayEffect")]
 		[LabelText("Gameplay Effect Asset Tags")]
@@ -2930,6 +2995,7 @@ namespace GameplayAbilities
 		{
 			ConvertAssetTagsComponent();
 			ConvertRemoveOtherComponent();
+			ConvertAdditionalEffectsComponent();
 			ConvertTagRequirementsComponent();
 			ConvertTargetTagsComponent();
 
@@ -3110,6 +3176,16 @@ namespace GameplayAbilities
 			}
 		}
 
+		private void ConvertAdditionalEffectsComponent()
+		{
+			AdditionalEffectsGameplayEffectComponent additionalEffectsComponent = GetComponent<AdditionalEffectsGameplayEffectComponent>();
+			if (additionalEffectsComponent != null)
+			{
+				ConditionalGameplayEffects = additionalEffectsComponent.OnApplicationGameplayEffects;
+				PrematureExpirationEffectClasses = additionalEffectsComponent.OnCompletePrematurely;
+				RoutineExpirationEffectClasses = additionalEffectsComponent.OnCompleteNormal;
+			}
+		}
 		private void ConvertTagRequirementsComponent()
 		{
 			TargetTagRequirementsGameplayEffectComponent tagRequirementsComponent = GetComponent<TargetTagRequirementsGameplayEffectComponent>();

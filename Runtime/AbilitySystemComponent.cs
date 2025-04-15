@@ -26,6 +26,7 @@ namespace GameplayAbilities
 		[HideInInspector]
 		public List<AttributeSet> SpawnedAttributes = new();
 		public List<GameplayEffectApplicationQuery> GameplayEffectApplicationQueries = new();
+
 		public ImmunityBlockGE OnImmunityBlockGameplayEffectDelegate;
 		public OnGameplayEffectAppliedDelegate OnGameplayEffectAppliedToSelfDelegate;
 		public OnGameplayEffectAppliedDelegate OnGameplayEffectAppliedToTargetDelegate;
@@ -165,14 +166,14 @@ namespace GameplayAbilities
 			return attributeObj;
 		}
 
-		public ActiveGameplayEffectHandle ApplyGameplayEffectToSelf(in GameplayEffect gameplay_effect, float level, in GameplayEffectContextHandle context)
+		public ActiveGameplayEffectHandle ApplyGameplayEffectToSelf(in GameplayEffect gameplayEffect, float level, in GameplayEffectContextHandle context)
 		{
-			if (gameplay_effect == null)
+			if (gameplayEffect == null)
 			{
 				return new ActiveGameplayEffectHandle();
 			}
 
-			GameplayEffectSpec spec = new(gameplay_effect, context, level);
+			GameplayEffectSpec spec = new(gameplayEffect, context, level);
 			return ApplyGameplayEffectSpecToSelf(spec);
 		}
 
@@ -259,6 +260,11 @@ namespace GameplayAbilities
 			}
 
 			return myHandle;
+		}
+
+		public void GetAllActiveGameplayEffectSpecs(List<GameplayEffectSpec> outSpecCopies)
+		{
+			ActiveGameplayEffects.GetAllActiveGameplayEffectSpecs(outSpecCopies);
 		}
 
 		public void NotifyTagMap_StackCountChange(in GameplayTagContainer container)
@@ -349,6 +355,35 @@ namespace GameplayAbilities
 		{
 			ActiveGameplayEffect activeEffect = ActiveGameplayEffects.GetActiveGameplayEffect(handle);
 			return activeEffect != null ? activeEffect.EventSet : null;
+		}
+
+		public OnGivenActiveGameplayEffectRemoved OnAnyGameplayEffectRemovedDelegate()
+		{
+			return ActiveGameplayEffects.OnActiveGameplayEffectRemovedDelegate;
+		}
+
+		public OnActiveGameplayEffectRemoved_Info OnGameplayEffectRemoved_InfoDelegate(ActiveGameplayEffectHandle handle)
+		{
+			ActiveGameplayEffect activeEffect = ActiveGameplayEffects.GetActiveGameplayEffect(handle);
+			return activeEffect != null ? activeEffect.EventSet.OnEffectRemoved : null;
+		}
+
+		public OnActiveGameplayEffectStackChange OnGameplayEffectStackChangeDelegate(ActiveGameplayEffectHandle handle)
+		{
+			ActiveGameplayEffect activeEffect = ActiveGameplayEffects.GetActiveGameplayEffect(handle);
+			return activeEffect != null ? activeEffect.EventSet.OnStackChanged : null;
+		}
+
+		public OnActiveGameplayEffectTimeChange OnGameplayEffectTimeChangeDelegate(ActiveGameplayEffectHandle handle)
+		{
+			ActiveGameplayEffect activeEffect = ActiveGameplayEffects.GetActiveGameplayEffect(handle);
+			return activeEffect != null ? activeEffect.EventSet.OnTimeChanged : null;
+		}
+
+		public OnActiveGameplayEffectInhibitionChanged OnGameplayEffectInhibitionChangedDelegate(ActiveGameplayEffectHandle handle)
+		{
+			ActiveGameplayEffect activeEffect = ActiveGameplayEffects.GetActiveGameplayEffect(handle);
+			return activeEffect != null ? activeEffect.EventSet.OnInhibitionChanged : null;
 		}
 
 		public void BlockAbilitiesWithTags(GameplayTagContainer tags)
@@ -550,9 +585,9 @@ namespace GameplayAbilities
 			ActiveGameplayEffects.OnMagnitudeDependencyChange(handle, changed_aggregator);
 		}
 
-		public void OnAttributeAggregatorDirty(Aggregator aggregator, GameplayAttribute attribute, bool from_recursive_call)
+		public void OnAttributeAggregatorDirty(Aggregator aggregator, GameplayAttribute attribute, bool fromRecursiveCall = false)
 		{
-			ActiveGameplayEffects.OnAttributeAggregatorDirty(aggregator, attribute, from_recursive_call);
+			ActiveGameplayEffects.OnAttributeAggregatorDirty(aggregator, attribute, fromRecursiveCall);
 		}
 
 		public virtual void OnGameplayEffectDurationChange(ActiveGameplayEffect activeEffect)
@@ -655,7 +690,7 @@ namespace GameplayAbilities
 			return attribute.IsValid() && GetAttributeSubobject(attribute.GetAttributeSetClass()) != null;
 		}
 
-		public virtual void HandleChangeAbilityCanBeCanceled(GameplayTagContainer ability_tags, GameplayAbility requesting_ability, bool can_be_cancelled)
+		public virtual void HandleChangeAbilityCanBeCanceled(in GameplayTagContainer abilityTags, GameplayAbility requestingAbility, bool canBeCancelled)
 		{
 
 		}
@@ -767,6 +802,24 @@ namespace GameplayAbilities
 
 
 			return foundSpecs;
+		}
+
+		public GameplayAbilitySpec FindAbilitySpecFromClass(GameplayAbility abilityClass)
+		{
+			foreach (var spec in ActivatableAbilities.Items)
+			{
+				if (spec.Ability == null)
+				{
+					continue;
+				}
+
+				if (spec.Ability == abilityClass)
+				{
+					return spec;	
+				}
+			}
+
+			return null;
 		}
 
 		public void ApplyAbilityBlockAndCancelTags(GameplayTagContainer abilityTags, GameplayAbility requestingAbility, bool enableBlockTags, in GameplayTagContainer blockTags, bool executeCancelTags, in GameplayTagContainer cancelTags)

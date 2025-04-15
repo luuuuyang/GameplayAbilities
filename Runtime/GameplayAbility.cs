@@ -235,7 +235,6 @@ namespace GameplayAbilities
 			ActivateAbility(handle, actorInfo, triggerEventData);
 		}
 
-		// Do boilerplate init stuff and then call ActivateAbility
 		public virtual void PreActivate(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, OnGameplayAbilityEnded onGameplayAbilityEndedDelegate)
 		{
 			actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent comp);
@@ -249,7 +248,7 @@ namespace GameplayAbilities
 
 			SetCurrentActorInfo(handle, actorInfo);
 
-			comp.HandleChangeAbilityCanBeCanceled(AbilityTags, this, true);
+			comp.HandleChangeAbilityCanBeCanceled(AssetTags, this, true);
 			comp.AddLooseGameplayTags(ActivationOwnedTags);
 
 			if (onGameplayAbilityEndedDelegate != null)
@@ -535,7 +534,7 @@ namespace GameplayAbilities
 			}
 		}
 
-		public ActiveGameplayEffectHandle ApplyGameplayEffectToOwner(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo, GameplayEffect gameplayEffect, int gameplayEffectLevel, int stacks = 1)
+		protected ActiveGameplayEffectHandle ApplyGameplayEffectToOwner(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo, GameplayEffect gameplayEffect, int gameplayEffectLevel, int stacks = 1)
 		{
 			if (gameplayEffect != null)
 			{
@@ -550,7 +549,7 @@ namespace GameplayAbilities
 			return new ActiveGameplayEffectHandle();
 		}
 
-		public ActiveGameplayEffectHandle ApplyGameplayEffectSpecToOwner(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, GameplayEffectSpecHandle specHandle)
+		protected ActiveGameplayEffectHandle ApplyGameplayEffectSpecToOwner(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, GameplayEffectSpecHandle specHandle)
 		{
 			if (specHandle.IsValid())
 			{
@@ -562,7 +561,7 @@ namespace GameplayAbilities
 			return new ActiveGameplayEffectHandle();
 		}
 
-		public List<ActiveGameplayEffectHandle> ApplyGameplayEffectToTarget(in GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, in GameplayAbilityTargetDataHandle target, GameplayEffect gameplayEffect, float gameplayEffectLevel, int stack)
+		protected List<ActiveGameplayEffectHandle> ApplyGameplayEffectToTarget(in GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, in GameplayAbilityTargetDataHandle target, GameplayEffect gameplayEffect, float gameplayEffectLevel, int stack)
 		{
 			List<ActiveGameplayEffectHandle> effectHandles = new List<ActiveGameplayEffectHandle>();
 
@@ -587,7 +586,7 @@ namespace GameplayAbilities
 			return effectHandles;
 		}
 
-		public List<ActiveGameplayEffectHandle> ApplyGameplayEffectToTarget(in GameplayAbilitySpecHandle abilityHandle, in GameplayAbilityActorInfo actorInfo, in GameplayEffectSpecHandle specHandle, in GameplayAbilityTargetDataHandle targetData)
+		protected List<ActiveGameplayEffectHandle> ApplyGameplayEffectToTarget(in GameplayAbilitySpecHandle abilityHandle, in GameplayAbilityActorInfo actorInfo, in GameplayEffectSpecHandle specHandle, in GameplayAbilityTargetDataHandle targetData)
 		{
 			List<ActiveGameplayEffectHandle> effectHandles = new List<ActiveGameplayEffectHandle>();
 
@@ -607,6 +606,35 @@ namespace GameplayAbilities
 			}
 
 			return effectHandles;
+		}
+
+		protected void RemoveGameplayEffectFromOwnerWithAssetTags(GameplayTagContainer withTags, int stacksToRemove = -1)
+		{
+			AbilitySystemComponent abilitySystemComponent = GetAbilitySystemComponentFromActorInfo_Ensured();
+			if (abilitySystemComponent != null)
+			{
+				GameplayEffectQuery query = GameplayEffectQuery.MakeQuery_MatchAnyEffectTags(withTags);
+				abilitySystemComponent.RemoveActiveEffects(query, stacksToRemove);
+			}
+		}
+
+		protected void RemoveGameplayEffectFromOwnerWithGrantedTags(GameplayTagContainer withGrantedTags, int stacksToRemove = -1)
+		{
+			AbilitySystemComponent abilitySystemComponent = GetAbilitySystemComponentFromActorInfo_Ensured();
+			if (abilitySystemComponent != null)
+			{
+				GameplayEffectQuery query = GameplayEffectQuery.MakeQuery_MatchAnyOwningTags(withGrantedTags);
+				abilitySystemComponent.RemoveActiveEffects(query, stacksToRemove);
+			}
+		}
+
+		protected void RemoveGameplayEffectFromOwnerWithHandle(ActiveGameplayEffectHandle handle, int stacksToRemove = -1)
+		{
+			AbilitySystemComponent abilitySystemComponent = GetAbilitySystemComponentFromActorInfo_Ensured();
+			if (abilitySystemComponent != null)
+			{
+				abilitySystemComponent.RemoveActiveGameplayEffect(handle, stacksToRemove);
+			}
 		}
 
 		public virtual GameplayEffectSpecHandle MakeOutgoingGameplayEffectSpec(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo, GameplayEffect gameplayEffect, float level)

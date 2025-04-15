@@ -89,7 +89,7 @@ namespace GameplayAbilities
 
             List<GameplayEffect> expiryEffects = removalInfo.PrematureRemoval ? OnCompletePrematurely : OnCompleteNormal;
 
-            List<GameplayEffect> allGameplayEffects = new List<GameplayEffect>(expiryEffects);
+            List<GameplayEffect> allGameplayEffects = new(expiryEffects);
             allGameplayEffects.AddRange(OnCompleteAlways);
 
             foreach (GameplayEffect curExpiryEffect in allGameplayEffects)

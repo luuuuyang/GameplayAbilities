@@ -48,8 +48,8 @@ namespace GameplayAbilities
 			GameplayTagContainer emptyTagContainer = new();
 			GameplayTagContainer srcTags = parameters.SourceTags is not null ? parameters.SourceTags : emptyTagContainer;
 			GameplayTagContainer tgtTags = parameters.TargetTags is not null ? parameters.TargetTags : emptyTagContainer;
-			bool sourceMet = SourceTagReqs is null || SourceTagReqs.RequirementsMet(srcTags);
-			bool targetMet = TargetTagReqs is null || TargetTagReqs.RequirementsMet(tgtTags);
+			bool sourceMet = SourceTagReqs is null || SourceTagReqs.IsEmpty() || SourceTagReqs.RequirementsMet(srcTags);
+			bool targetMet = TargetTagReqs is null || TargetTagReqs.IsEmpty() || TargetTagReqs.RequirementsMet(tgtTags);
 
 			bool sourceFilterMet = parameters.AppliedSourceTagFilter.Count == 0;
 			bool targetFilterMet = parameters.AppliedTargetTagFilter.Count == 0;
@@ -409,7 +409,7 @@ namespace GameplayAbilities
 			BroadcastOnDirty();
 		}
 
-		public void UpdateAggregatorMod(ActiveGameplayEffectHandle activeHandle, GameplayAttribute attribute, GameplayEffectSpec spec, ActiveGameplayEffectHandle handle)
+		public void UpdateAggregatorMod(ActiveGameplayEffectHandle activeHandle, in GameplayAttribute attribute, in GameplayEffectSpec spec, ActiveGameplayEffectHandle handle)
 		{
 			ModChannels.RemoveAggregatorMod(activeHandle);
 
@@ -471,7 +471,7 @@ namespace GameplayAbilities
 			BroadcastingDirtyCount++;
 			OnDirty?.Invoke(this);
 
-			List<ActiveGameplayEffectHandle> dependantsLocalCopy = Dependents;
+			List<ActiveGameplayEffectHandle> dependantsLocalCopy = new(Dependents);
 			Dependents.Clear();
 
 			foreach (ActiveGameplayEffectHandle handle in dependantsLocalCopy)
