@@ -441,7 +441,7 @@ namespace GameplayAbilities
 
         public void Notify_StackCountChange(in GameplayTag tag)
         {
-            GameplayTagContainer tagAndParentsContainer = tag.GetGameplayTagParents();
+            GameplayTagContainer tagAndParentsContainer = new(tag.GetGameplayTagParents());
             foreach (GameplayTag curTag in tagAndParentsContainer)
             {
                 if (GameplayTagEventMap.TryGetValue(curTag, out DelegateInfo delegateInfo))
@@ -664,7 +664,7 @@ namespace GameplayAbilities
 
         private bool GatherTagChangeDelegates(in GameplayTag tag, in int countDelta, List<DeferredTagChangeDelegate> tagChangeDelegates)
         {
-            GameplayTagContainer tagAndParentsContainer = tag.GetGameplayTagParents();
+            GameplayTagContainer tagAndParentsContainer = new(tag.GetGameplayTagParents());
             bool createdSignificantChange = false;
             foreach (GameplayTag curTag in tagAndParentsContainer)
             {

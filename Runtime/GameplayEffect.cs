@@ -552,8 +552,8 @@ namespace GameplayAbilities
 			}
 			else
 			{
-				GameplayTagContainer removesThatApply = Removed.Filter(applyToContainer);
-				GameplayTagContainer removeOverridesAdd = Added.FilterExact(Removed);
+				GameplayTagContainer removesThatApply = new(Removed.Filter(applyToContainer));
+				GameplayTagContainer removeOverridesAdd = new(Added.FilterExact(Removed));
 				removesThatApply.AppendTags(removeOverridesAdd);
 
 				applyToContainer.AppendTags(Added);

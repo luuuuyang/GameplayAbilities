@@ -69,7 +69,7 @@ namespace GameplayAbilities
 
 			if (tags is not null)
 			{
-				return tags;
+				return new GameplayTagContainer(tags);
 			}
 			
 			return new GameplayTagContainer();
@@ -91,7 +91,7 @@ namespace GameplayAbilities
 
 			if (tags is not null)
 			{
-				return tags;
+				return new GameplayTagContainer(tags);
 			}
 			
 			return new GameplayTagContainer();

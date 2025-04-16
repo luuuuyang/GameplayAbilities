@@ -197,7 +197,7 @@ namespace GameplayAbilities
 						optionalRelevantTags.AddTag(missingTag);
 					}
 
-					GameplayTagContainer missingTags = requiredTags;
+					GameplayTagContainer missingTags = new(requiredTags);
 					missingTags.RemoveTags(tagsToCheck.GetGameplayTagParents());
 					optionalRelevantTags.AppendTags(missingTags);
 				}
