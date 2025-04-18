@@ -1290,7 +1290,7 @@ namespace GameplayAbilities
 			return Duration == GameplayEffectConstants.InfiniteDuration ? -1 : Duration - (worldTime - StartWorldTime);
 		}
 
-		public bool Equals(ActiveGameplayEffect? other)
+		public bool Equals(ActiveGameplayEffect other)
 		{
 			if (other is null)
 			{
@@ -1300,7 +1300,7 @@ namespace GameplayAbilities
 			return Handle == other.Handle;
 		}
 
-		public static bool operator ==(ActiveGameplayEffect? lhs, ActiveGameplayEffect? rhs)
+		public static bool operator ==(ActiveGameplayEffect lhs, ActiveGameplayEffect rhs)
 		{
 			if (lhs is null)
 			{
@@ -1310,12 +1310,12 @@ namespace GameplayAbilities
 			return lhs.Equals(rhs);
 		}
 
-		public static bool operator !=(ActiveGameplayEffect? lhs, ActiveGameplayEffect? rhs)
+		public static bool operator !=(ActiveGameplayEffect lhs, ActiveGameplayEffect rhs)
 		{
 			return !(lhs == rhs);
 		}
 
-		public override bool Equals(object? obj)
+		public override bool Equals(object obj)
 		{
 			return Equals(obj as ActiveGameplayEffect);
 		}

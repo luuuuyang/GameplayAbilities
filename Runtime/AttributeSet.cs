@@ -238,7 +238,7 @@ namespace GameplayAbilities
 			}
 		}
 
-		public bool Equals(GameplayAttribute? other)
+		public bool Equals(GameplayAttribute other)
 		{
 			if (other is null)
 			{
