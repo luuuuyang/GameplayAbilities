@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using GameplayTags;
 using System;
+using Mono.CSharp;
 
 namespace GameplayAbilities
 {
@@ -13,40 +14,56 @@ namespace GameplayAbilities
 		DoNothing
 	}
 
-	public class GameplayAbilitySpecDef
+	public class GameplayAbilitySpecDef : IEquatable<GameplayAbilitySpecDef>
 	{
 		public GameplayAbility Ability;
-		public ScalableFloat LevelScalableFloat;
+		public ScalableFloat LevelScalableFloat = new(1);
 		public GameplayEffectGrantedAbilityRemovePolicy RemovePolicy;
 		public WeakReference<UnityEngine.Object> SourceObject;
 		public Dictionary<GameplayTag, float> SetByCallerTagMagnitudes;
 		public GameplayAbilitySpecHandle AssignedHandle;
 
-		public static bool operator ==(GameplayAbilitySpecDef a, GameplayAbilitySpecDef b)
+		public bool Equals(GameplayAbilitySpecDef other)
 		{
-			return a.Ability == b.Ability &&
-				a.LevelScalableFloat == b.LevelScalableFloat &&
-				a.RemovePolicy == b.RemovePolicy;
+			if (other is null)
+			{
+				return false;
+			}
+
+			return Ability == other.Ability &&
+				LevelScalableFloat == other.LevelScalableFloat &&
+				RemovePolicy == other.RemovePolicy;
 		}
 
-		public static bool operator !=(GameplayAbilitySpecDef a, GameplayAbilitySpecDef b)
+		public static bool operator ==(GameplayAbilitySpecDef lhs, GameplayAbilitySpecDef rhs)
 		{
-			return !(a == b);
+			if (lhs is null)
+			{
+				return rhs is null;
+			}
+
+			return lhs.Equals(rhs);
+		}
+
+		public static bool operator !=(GameplayAbilitySpecDef lhs, GameplayAbilitySpecDef rhs)
+		{
+			return !(lhs == rhs);
 		}
 
 		public override bool Equals(object obj)
 		{
-			if (obj == null)
-			{
-				return false;
-			}
-			return obj is GameplayAbilitySpecDef def && this == def;
+			return Equals(obj as GameplayAbilitySpecDef);
+		}
+
+		public override int GetHashCode()
+		{
+			return HashCode.Combine(Ability, LevelScalableFloat, RemovePolicy);
 		}
 	}
 
 	public class GameplayAbilitySpec
 	{
-		public GameplayAbilitySpecHandle Handle;
+		public GameplayAbilitySpecHandle Handle = new();
 		public GameplayAbility Ability;
 		public int Level;
 		public List<GameplayAbility> ReplicatedInstances = new();
@@ -57,22 +74,15 @@ namespace GameplayAbilities
 			{
 				return ReplicatedInstances.Concat(NonReplicatedInstances).ToList();
 			}
-			set { _AbilityInstances = value; }
 		}
-		private List<GameplayAbility> _AbilityInstances;
-
 		public WeakReference<UnityEngine.Object> SourceObject;
-		// A count of the number of times this ability has been activated minus the number of times it has been ended. For instanced abilities this will be the number of currently active instances. Can't replicate until prediction accurately handles this.
 		public int ActiveCount;
 		public bool RemoveAfterActivation;
 		public bool PendingRemove;
 		public bool ActivateOnce;
-		public ActiveGameplayEffectHandle GameplayEffectHandle = new(-1);
-
+		public ActiveGameplayEffectHandle GameplayEffectHandle = new();
 		public GameplayTagContainer DynamicAbilityTags = new();
 		public GameplayTagContainer DynamicSpecSourceTags => DynamicAbilityTags;
-
-		// Passed on SetByCaller magnitudes if this ability was granted by a GE
 		public Dictionary<GameplayTag, float> SetByCallerTagMagnitudes = new();
 
 		public GameplayAbilitySpec()

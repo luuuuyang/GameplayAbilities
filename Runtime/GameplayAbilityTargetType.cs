@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace GameplayAbilities
 {
-    public class GameplayAbilityTargetData
+    public record GameplayAbilityTargetData
     {
         public virtual List<WeakReference<GameObject>> Actors { get; set; } = new();
 
@@ -62,7 +62,7 @@ namespace GameplayAbilities
         }
     }
 
-    public class GameplayAbilityTargetDataHandle
+    public record GameplayAbilityTargetDataHandle
     {
         public List<GameplayAbilityTargetData> Data = new();
 
@@ -108,37 +108,11 @@ namespace GameplayAbilities
         {
             Data.AddRange(data.Data);
         }
-
-        public static bool operator ==(GameplayAbilityTargetDataHandle a, GameplayAbilityTargetDataHandle b)
-        {
-            if (a.Data.Count != b.Data.Count)
-            {
-                return false;
-            }
-            for (int i = 0; i < a.Data.Count; i++)
-            {
-                if (a.Data[i] != null && b.Data[i] != null)
-                {
-                    return false;
-                }
-                if (a.Data[i] != b.Data[i])
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        public static bool operator !=(GameplayAbilityTargetDataHandle a, GameplayAbilityTargetDataHandle b)
-        {
-            return !(a == b);
-        }
     }
 
-    public class GameplayAbilityTargetData_ActorArray : GameplayAbilityTargetData
+    public record GameplayAbilityTargetData_ActorArray : GameplayAbilityTargetData
     {
         public List<WeakReference<GameObject>> TargetActorArray = new();
-
         public override List<WeakReference<GameObject>> Actors => TargetActorArray;
     }
 

@@ -6,7 +6,7 @@ namespace GameplayAbilities
 {
 	[InlineProperty]
 	[Serializable]
-	public class ScalableFloat
+	public record ScalableFloat
 	{
 		[HorizontalGroup]
 		[HideLabel]
@@ -46,21 +46,6 @@ namespace GameplayAbilities
 				outFloat = Value;
 				return false;
 			}
-		}
-
-		public static bool operator ==(ScalableFloat a, ScalableFloat b)
-		{
-			return a.Value == b.Value && a.AnimationCurve == b.AnimationCurve;
-		}
-
-		public static bool operator !=(ScalableFloat a, ScalableFloat b)
-		{
-			return !(a == b);
-		}
-
-		public override int GetHashCode()
-		{
-			return base.GetHashCode();
 		}
 	}
 }

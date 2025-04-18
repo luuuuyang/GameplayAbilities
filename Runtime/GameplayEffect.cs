@@ -36,7 +36,7 @@ namespace GameplayAbilities
 	}
 
 	[Serializable]
-	public class AttributeBasedFloat
+	public class AttributeBasedFloat : IEquatable<AttributeBasedFloat>
 	{
 		public ScalableFloat Coefficient;
 		public ScalableFloat PreMultiplyAdditiveValue;
@@ -109,27 +109,32 @@ namespace GameplayAbilities
 			return Coefficient.GetValueAtLevel(specLevel) * (attributeValue + PreMultiplyAdditiveValue.GetValueAtLevel(specLevel)) + PostMultiplyAdditiveValue.GetValueAtLevel(specLevel);
 		}
 
-		public static bool operator ==(AttributeBasedFloat a, AttributeBasedFloat b)
+		public bool Equals(AttributeBasedFloat other)
 		{
-			if (a.Coefficient != b.Coefficient ||
-				a.PreMultiplyAdditiveValue != b.PreMultiplyAdditiveValue ||
-				a.PostMultiplyAdditiveValue != b.PostMultiplyAdditiveValue ||
-				a.BackingAttribute != b.BackingAttribute ||
-				a.AttributeCurve != b.AttributeCurve ||
-				a.AttributeCalculationType != b.AttributeCalculationType ||
-				a.FinalChannel != b.FinalChannel)
+			if (other is null)
 			{
 				return false;
 			}
 
-			if (a.SourceTagFilter.Count != b.SourceTagFilter.Count ||
-				!a.SourceTagFilter.HasAllExact(b.SourceTagFilter))
+			if (Coefficient != other.Coefficient ||
+				PreMultiplyAdditiveValue != other.PreMultiplyAdditiveValue ||
+				PostMultiplyAdditiveValue != other.PostMultiplyAdditiveValue ||
+				BackingAttribute != other.BackingAttribute ||
+				AttributeCurve != other.AttributeCurve ||
+				AttributeCalculationType != other.AttributeCalculationType ||
+				FinalChannel != other.FinalChannel)
 			{
 				return false;
 			}
 
-			if (a.TargetTagFilter.Count != b.TargetTagFilter.Count ||
-				!a.TargetTagFilter.HasAllExact(b.TargetTagFilter))
+			if (SourceTagFilter.Count != other.SourceTagFilter.Count ||
+				!SourceTagFilter.HasAllExact(other.SourceTagFilter))
+			{
+				return false;
+			}
+
+			if (TargetTagFilter.Count != other.TargetTagFilter.Count ||
+				!TargetTagFilter.HasAllExact(other.TargetTagFilter))
 			{
 				return false;
 			}
@@ -137,28 +142,44 @@ namespace GameplayAbilities
 			return true;
 		}
 
-		public static bool operator !=(AttributeBasedFloat a, AttributeBasedFloat b)
+		public static bool operator ==(AttributeBasedFloat lhs, AttributeBasedFloat rhs)
 		{
-			return !(a == b);
+			if (lhs is null)
+			{
+				return rhs is null;
+			}
+
+			return lhs.Equals(rhs);
+		}
+
+		public static bool operator !=(AttributeBasedFloat lhs, AttributeBasedFloat rhs)
+		{
+			return !(lhs == rhs);
 		}
 
 		public override bool Equals(object obj)
 		{
-			if (obj == null || !(obj is AttributeBasedFloat))
-			{
-				return false;
-			}
-			return base.Equals(obj);
+			return Equals(obj);
 		}
 
 		public override int GetHashCode()
 		{
-			return base.GetHashCode();
+			HashCode hashCode = new();
+			hashCode.Add(Coefficient);
+			hashCode.Add(PreMultiplyAdditiveValue);
+			hashCode.Add(PostMultiplyAdditiveValue);
+			hashCode.Add(BackingAttribute);
+			hashCode.Add(AttributeCurve);
+			hashCode.Add(AttributeCalculationType);
+			hashCode.Add(FinalChannel);
+			hashCode.Add(SourceTagFilter);
+			hashCode.Add(TargetTagFilter);
+			return hashCode.ToHashCode();
 		}
 	}
 
 	[Serializable]
-	public class CustomCalculationBasedFloat
+	public record CustomCalculationBasedFloat
 	{
 		public GameplayModMagnitudeCalculation CalculationClassMagnitude;
 		public ScalableFloat Coefficient;
@@ -189,16 +210,6 @@ namespace GameplayAbilities
 
 			return finalValue;
 		}
-
-		public static bool operator ==(CustomCalculationBasedFloat a, CustomCalculationBasedFloat b)
-		{
-			return a.CalculationClassMagnitude == b.CalculationClassMagnitude && a.Coefficient == b.Coefficient && a.PreMultiplyAdditiveValue == b.PreMultiplyAdditiveValue && a.PostMultiplyAdditiveValue == b.PostMultiplyAdditiveValue;
-		}
-
-		public static bool operator !=(CustomCalculationBasedFloat a, CustomCalculationBasedFloat b)
-		{
-			return !(a == b);
-		}
 	}
 
 	[Serializable]
@@ -209,7 +220,7 @@ namespace GameplayAbilities
 	}
 
 	[Serializable]
-	public class GameplayEffectModifierMagnitude
+	public class GameplayEffectModifierMagnitude : IEquatable<GameplayEffectModifierMagnitude>
 	{
 		public GameplayEffectMagnitudeCalculation MagnitudeCalculationType;
 
@@ -248,35 +259,40 @@ namespace GameplayAbilities
 			SetByCallerMagnitude = value;
 		}
 
-		public static bool operator ==(GameplayEffectModifierMagnitude a, GameplayEffectModifierMagnitude b)
+		public bool Equals(GameplayEffectModifierMagnitude other)
 		{
-			if (a.MagnitudeCalculationType != b.MagnitudeCalculationType)
+			if (other is null)
 			{
 				return false;
 			}
 
-			switch (a.MagnitudeCalculationType)
+			if (MagnitudeCalculationType != other.MagnitudeCalculationType)
+			{
+				return false;
+			}
+
+			switch (MagnitudeCalculationType)
 			{
 				case GameplayEffectMagnitudeCalculation.ScalableFloat:
-					if (a.ScalableFloatMagnitude != b.ScalableFloatMagnitude)
+					if (ScalableFloatMagnitude != other.ScalableFloatMagnitude)
 					{
 						return false;
 					}
 					break;
 				case GameplayEffectMagnitudeCalculation.AttributeBased:
-					if (a.AttributeBasedMagnitude != b.AttributeBasedMagnitude)
+					if (AttributeBasedMagnitude != other.AttributeBasedMagnitude)
 					{
 						return false;
 					}
 					break;
 				case GameplayEffectMagnitudeCalculation.CustomCalculationClass:
-					if (a.CustomMagnitude != b.CustomMagnitude)
+					if (CustomMagnitude != other.CustomMagnitude)
 					{
 						return false;
 					}
 					break;
 				case GameplayEffectMagnitudeCalculation.SetByCaller:
-					if (a.SetByCallerMagnitude.DataName != b.SetByCallerMagnitude.DataName)
+					if (SetByCallerMagnitude.DataName != other.SetByCallerMagnitude.DataName)
 					{
 						return false;
 					}
@@ -286,9 +302,41 @@ namespace GameplayAbilities
 			return true;
 		}
 
-		public static bool operator !=(GameplayEffectModifierMagnitude a, GameplayEffectModifierMagnitude b)
+		public static bool operator ==(GameplayEffectModifierMagnitude lhs, GameplayEffectModifierMagnitude rhs)
 		{
-			return !(a == b);
+			if (lhs is null)
+			{
+				return rhs is null;
+			}
+
+			return lhs.Equals(rhs);
+		}
+
+		public static bool operator !=(GameplayEffectModifierMagnitude lhs, GameplayEffectModifierMagnitude rhs)
+		{
+			return !(lhs == rhs);
+		}
+
+		public override bool Equals(object obj)
+		{
+			return Equals(obj as GameplayEffectModifierMagnitude);
+		}
+
+		public override int GetHashCode()
+		{
+			switch (MagnitudeCalculationType)
+			{
+				case GameplayEffectMagnitudeCalculation.ScalableFloat:
+					return HashCode.Combine(MagnitudeCalculationType, ScalableFloatMagnitude);
+				case GameplayEffectMagnitudeCalculation.AttributeBased:
+					return HashCode.Combine(MagnitudeCalculationType, AttributeBasedMagnitude);
+				case GameplayEffectMagnitudeCalculation.CustomCalculationClass:
+					return HashCode.Combine(MagnitudeCalculationType, CustomMagnitude);
+				case GameplayEffectMagnitudeCalculation.SetByCaller:
+					return HashCode.Combine(MagnitudeCalculationType, SetByCallerMagnitude);
+				default:
+					return HashCode.Combine(MagnitudeCalculationType);
+			}
 		}
 
 		public bool CanCalculateMagnitude(in GameplayEffectSpec relevantSpec)
@@ -431,29 +479,19 @@ namespace GameplayAbilities
 	}
 
 	[Serializable]
-	public struct ConditionalGameplayEffect
+	public record ConditionalGameplayEffect
 	{
 		public GameplayEffect Effect;
 		public GameplayTagContainer RequiredSourceTags;
 
-		public readonly bool CanApply(in GameplayTagContainer sourceTags, float sourceLevel)
+		public bool CanApply(in GameplayTagContainer sourceTags, float sourceLevel)
 		{
 			return sourceTags.HasAll(RequiredSourceTags);
 		}
 
-		public readonly GameplayEffectSpecHandle CreateSpec(GameplayEffectContextHandle effectContext, float sourceLevel)
+		public GameplayEffectSpecHandle CreateSpec(GameplayEffectContextHandle effectContext, float sourceLevel)
 		{
 			return Effect != null ? new GameplayEffectSpecHandle(new GameplayEffectSpec(Effect, effectContext, sourceLevel)) : new GameplayEffectSpecHandle();
-		}
-
-		public static bool operator ==(ConditionalGameplayEffect a, ConditionalGameplayEffect b)
-		{
-			return a.Effect == b.Effect && a.RequiredSourceTags == b.RequiredSourceTags;
-		}
-
-		public static bool operator !=(ConditionalGameplayEffect a, ConditionalGameplayEffect b)
-		{
-			return !(a == b);
 		}
 	}
 
@@ -485,7 +523,7 @@ namespace GameplayAbilities
 	}
 
 	[Serializable]
-	public class GameplayModifierInfo
+	public record GameplayModifierInfo
 	{
 		[HideLabel]
 		public GameplayAttribute Attribute = new();
@@ -496,20 +534,10 @@ namespace GameplayAbilities
 		// used for Execution or MMC
 		public GameplayTagRequirements SourceTags;
 		public GameplayTagRequirements TargetTags;
-
-		public static bool operator ==(GameplayModifierInfo a, GameplayModifierInfo b)
-		{
-			return a.Attribute == b.Attribute && a.ModifierOp == b.ModifierOp && a.ModifierMagnitude == b.ModifierMagnitude && a.EvaluationChannelSettings == b.EvaluationChannelSettings && a.SourceTags == b.SourceTags && a.TargetTags == b.TargetTags;
-		}
-
-		public static bool operator !=(GameplayModifierInfo a, GameplayModifierInfo b)
-		{
-			return !(a == b);
-		}
 	}
 
 	[Serializable]
-	public class InheritedTagContainer
+	public record InheritedTagContainer
 	{
 		[ReadOnly]
 		public GameplayTagContainer CombinedTags = new();
@@ -570,16 +598,6 @@ namespace GameplayAbilities
 		{
 			CombinedTags.RemoveTag(tagToRemove);
 		}
-
-		public static bool operator ==(InheritedTagContainer a, InheritedTagContainer b)
-		{
-			return a.CombinedTags == b.CombinedTags && a.Added == b.Added && a.Removed == b.Removed;
-		}
-
-		public static bool operator !=(InheritedTagContainer a, InheritedTagContainer b)
-		{
-			return !(a == b);
-		}
 	}
 
 	public enum GameplayEffectDurationType
@@ -616,12 +634,12 @@ namespace GameplayAbilities
 		ExecuteAndResetPeriod
 	}
 
-	public class ModifierSpec
+	public record ModifierSpec
 	{
 		public float EvaluatedMagnitude;
 	}
 
-	public class GameplayEffectModifiedAttribute : ICloneable
+	public class GameplayEffectModifiedAttribute
 	{
 		public GameplayAttribute Attribute;
 		public float TotalMagnitude;
@@ -636,14 +654,9 @@ namespace GameplayAbilities
 			Attribute = attribute;
 			TotalMagnitude = totalMagnitude;
 		}
-
-		public object Clone()
-		{
-			return new GameplayEffectModifiedAttribute(Attribute, TotalMagnitude);
-		}
 	}
 
-	public class GameplayEffectAttributeCaptureSpec : ICloneable
+	public class GameplayEffectAttributeCaptureSpec
 	{
 		public GameplayEffectAttributeCaptureDefinition BackingDefinition;
 		public Aggregator AttributeAggregator;
@@ -652,11 +665,6 @@ namespace GameplayAbilities
 		{
 			BackingDefinition = definition;
 			AttributeAggregator = new Aggregator();
-		}
-
-		public object Clone()
-		{
-			return new GameplayEffectAttributeCaptureSpec(BackingDefinition);
 		}
 
 		public bool HasValidCapture()
@@ -745,70 +753,63 @@ namespace GameplayAbilities
 
 		public GameplayEffectAttributeCaptureSpecContainer(in GameplayEffectAttributeCaptureSpecContainer other)
 		{
-			SourceAttributes = other.SourceAttributes.DeepCopy();
-			TargetAttributes = other.TargetAttributes.DeepCopy();
+			SourceAttributes = other.SourceAttributes;
+			TargetAttributes = other.TargetAttributes;
 			HasNonSnapshottedAttributes = other.HasNonSnapshottedAttributes;
 		}
 
-		public void CopyFrom(in GameplayEffectAttributeCaptureSpecContainer other)
+		public GameplayEffectAttributeCaptureSpec FindCaptureSpecByDefinition(GameplayEffectAttributeCaptureDefinition definition, bool onlyIncludeValidCapture)
 		{
-			SourceAttributes = other.SourceAttributes.DeepCopy();
-			TargetAttributes = other.TargetAttributes.DeepCopy();
-			HasNonSnapshottedAttributes = other.HasNonSnapshottedAttributes;
-		}
+			bool sourceAttribute = definition.AttributeSource == GameplayEffectAttributeCaptureSource.Source;
+			List<GameplayEffectAttributeCaptureSpec> attributeArray = sourceAttribute ? SourceAttributes : TargetAttributes;
 
-		public GameplayEffectAttributeCaptureSpec FindCaptureSpecByDefinition(GameplayEffectAttributeCaptureDefinition definition, bool only_include_valid_capture)
-		{
-			bool source_attribute = definition.AttributeSource == GameplayEffectAttributeCaptureSource.Source;
-			List<GameplayEffectAttributeCaptureSpec> attribute_array = source_attribute ? SourceAttributes : TargetAttributes;
+			GameplayEffectAttributeCaptureSpec matchingSpec = attributeArray.Find((element) => element.BackingDefinition == definition);
 
-			GameplayEffectAttributeCaptureSpec matching_spec = attribute_array.Find((element) => element.BackingDefinition == definition);
-
-			if (matching_spec is not null && only_include_valid_capture && !matching_spec.HasValidCapture())
+			if (matchingSpec is not null && onlyIncludeValidCapture && !matchingSpec.HasValidCapture())
 			{
-				matching_spec = null;
+				matchingSpec = null;
 			}
 
-			return matching_spec;
+			return matchingSpec;
 		}
 
-		public bool HasValidCapturedAttributes(in List<GameplayEffectAttributeCaptureDefinition> capture_defs_to_check)
+		public bool HasValidCapturedAttributes(in List<GameplayEffectAttributeCaptureDefinition> captureDefsToCheck)
 		{
-			bool has_valid = true;
+			bool hasValid = true;
 
-			foreach (GameplayEffectAttributeCaptureDefinition cur_def in capture_defs_to_check)
+			foreach (GameplayEffectAttributeCaptureDefinition curDef in captureDefsToCheck)
 			{
-				GameplayEffectAttributeCaptureSpec capture_spec = FindCaptureSpecByDefinition(cur_def, true);
-				if (capture_spec is null)
+				GameplayEffectAttributeCaptureSpec captureSpec = FindCaptureSpecByDefinition(curDef, true);
+				if (captureSpec is null)
 				{
-					has_valid = false;
+					hasValid = false;
 					break;
 				}
 			}
 
-			return has_valid;
+			return hasValid;
 		}
 
-		public void CaptureAttributes(AbilitySystemComponent ability_system_component, GameplayEffectAttributeCaptureSource capture_source)
+		public void CaptureAttributes(AbilitySystemComponent abilitySystemComponent, GameplayEffectAttributeCaptureSource captureSource)
 		{
-			if (ability_system_component != null)
+			if (abilitySystemComponent != null)
 			{
-				bool source_component = capture_source == GameplayEffectAttributeCaptureSource.Source;
-				List<GameplayEffectAttributeCaptureSpec> attribute_array = source_component ? SourceAttributes : TargetAttributes;
-				foreach (GameplayEffectAttributeCaptureSpec cur_capture_spec in attribute_array)
+				bool sourceComponent = captureSource == GameplayEffectAttributeCaptureSource.Source;
+				List<GameplayEffectAttributeCaptureSpec> attributeArray = sourceComponent ? SourceAttributes : TargetAttributes;
+				foreach (GameplayEffectAttributeCaptureSpec curCaptureSpec in attributeArray)
 				{
-					ability_system_component.CaptureAttributeForGameplayEffect(cur_capture_spec);
+					abilitySystemComponent.CaptureAttributeForGameplayEffect(curCaptureSpec);
 				}
 			}
 		}
 
-		public void AddCaptureDefinition(GameplayEffectAttributeCaptureDefinition capture_definition)
+		public void AddCaptureDefinition(GameplayEffectAttributeCaptureDefinition captureDefinition)
 		{
-			bool source_attribute = capture_definition.AttributeSource == GameplayEffectAttributeCaptureSource.Source;
-			List<GameplayEffectAttributeCaptureSpec> attribute_array = source_attribute ? SourceAttributes : TargetAttributes;
-			if (!attribute_array.Exists((element) => element.BackingDefinition == capture_definition))
+			bool sourceAttribute = captureDefinition.AttributeSource == GameplayEffectAttributeCaptureSource.Source;
+			List<GameplayEffectAttributeCaptureSpec> attributeArray = sourceAttribute ? SourceAttributes : TargetAttributes;
+			if (!attributeArray.Exists((element) => element.BackingDefinition == captureDefinition))
 			{
-				attribute_array.Add(new GameplayEffectAttributeCaptureSpec(capture_definition));
+				attributeArray.Add(new GameplayEffectAttributeCaptureSpec(captureDefinition));
 			}
 		}
 
@@ -860,16 +861,8 @@ namespace GameplayAbilities
 		public Dictionary<string, float> SetByCallerNameMagnitudes = new();
 		public Dictionary<GameplayTag, float> SetByCallerTagMagnitudes = new();
 
-		public float Level
-		{
-			get;
-			private set;
-		}
-		public GameplayEffectContextHandle EffectContext
-		{
-			get;
-			private set;
-		}
+		public float Level { get; private set; }
+		public GameplayEffectContextHandle EffectContext { get; private set; } = new();
 
 		public GameplayEffectSpec()
 		{
@@ -895,23 +888,23 @@ namespace GameplayAbilities
 		public GameplayEffectSpec(in GameplayEffectSpec other)
 		{
 			Def = other.Def;
-			ModifiedAttributes = other.ModifiedAttributes.DeepCopy();
-			CapturedRelevantAttributes.CopyFrom(other.CapturedRelevantAttributes);
-			TargetEffectSpecs = other.TargetEffectSpecs.DeepCopy();
+			ModifiedAttributes = other.ModifiedAttributes;
+			CapturedRelevantAttributes = other.CapturedRelevantAttributes;
+			TargetEffectSpecs = other.TargetEffectSpecs;
 			Duration = other.Duration;
 			Period = other.Period;
-			CapturedSourceTags.CopyFrom(other.CapturedSourceTags);
-			CapturedTargetTags.CopyFrom(other.CapturedTargetTags);
-			DynamicGrantedTags.CopyFrom(other.DynamicGrantedTags);
-			DynamicAssetTags.CopyFrom(other.DynamicAssetTags);
+			CapturedSourceTags = other.CapturedSourceTags;
+			CapturedTargetTags = other.CapturedTargetTags;
+			DynamicGrantedTags = other.DynamicGrantedTags;
+			DynamicAssetTags = other.DynamicAssetTags;
 			Modifiers = other.Modifiers;
 			StackCount = other.StackCount;
 			CompletedSourceAttributeCapture = other.CompletedSourceAttributeCapture;
 			CompletedTargetAttributeCapture = other.CompletedTargetAttributeCapture;
 			DurationLocked = other.DurationLocked;
 			GrantedAbilitySpecs = other.GrantedAbilitySpecs;
-			SetByCallerNameMagnitudes = new Dictionary<string, float>(other.SetByCallerNameMagnitudes);
-			SetByCallerTagMagnitudes = new Dictionary<GameplayTag, float>(other.SetByCallerTagMagnitudes);
+			SetByCallerNameMagnitudes = other.SetByCallerNameMagnitudes;
+			SetByCallerTagMagnitudes = other.SetByCallerTagMagnitudes;
 			EffectContext = other.EffectContext;
 			Level = other.Level;
 		}
@@ -1252,7 +1245,7 @@ namespace GameplayAbilities
 		}
 	}
 
-	public class ActiveGameplayEffect
+	public class ActiveGameplayEffect : IEquatable<ActiveGameplayEffect>
 	{
 		public ActiveGameplayEffectHandle Handle;
 		public GameplayEffectSpec Spec;
@@ -1260,8 +1253,8 @@ namespace GameplayAbilities
 		public bool IsInhibited;
 		public float StartWorldTime;
 		public bool IsPendingRemove;
-		public TimerHandle PeriodHandle;
-		public TimerHandle DurationHandle;
+		public TimerHandle PeriodHandle = new();
+		public TimerHandle DurationHandle = new();
 		public ActiveGameplayEffectEvents EventSet = new();
 
 		public float Duration => Spec.Duration;
@@ -1282,8 +1275,8 @@ namespace GameplayAbilities
 		public ActiveGameplayEffect(in ActiveGameplayEffect other)
 		{
 			Handle = other.Handle;
-			Spec = new GameplayEffectSpec(other.Spec);
-			GrantedAbilityHandles = new List<GameplayAbilitySpecHandle>(other.GrantedAbilityHandles);
+			Spec = other.Spec;
+			GrantedAbilityHandles = other.GrantedAbilityHandles;
 			IsInhibited = other.IsInhibited;
 			StartWorldTime = other.StartWorldTime;
 			IsPendingRemove = other.IsPendingRemove;
@@ -1297,33 +1290,34 @@ namespace GameplayAbilities
 			return Duration == GameplayEffectConstants.InfiniteDuration ? -1 : Duration - (worldTime - StartWorldTime);
 		}
 
-		public static bool operator ==(ActiveGameplayEffect a, ActiveGameplayEffect b)
+		public bool Equals(ActiveGameplayEffect? other)
 		{
-			if (a is null && b is null)
-			{
-				return true;
-			}
-
-			if (a is null || b is null)
+			if (other is null)
 			{
 				return false;
 			}
 
-			return a.Handle == b.Handle;
+			return Handle == other.Handle;
 		}
 
-		public static bool operator !=(ActiveGameplayEffect a, ActiveGameplayEffect b)
+		public static bool operator ==(ActiveGameplayEffect? lhs, ActiveGameplayEffect? rhs)
 		{
-			return !(a == b);
-		}
-
-		public override bool Equals(object obj)
-		{
-			if (obj is ActiveGameplayEffect other)
+			if (lhs is null)
 			{
-				return Handle == other.Handle;
+				return rhs is null;
 			}
-			return false;
+
+			return lhs.Equals(rhs);
+		}
+
+		public static bool operator !=(ActiveGameplayEffect? lhs, ActiveGameplayEffect? rhs)
+		{
+			return !(lhs == rhs);
+		}
+
+		public override bool Equals(object? obj)
+		{
+			return Equals(obj as ActiveGameplayEffect);
 		}
 
 		public override int GetHashCode()
@@ -1556,9 +1550,9 @@ namespace GameplayAbilities
 	{
 		public AbilitySystemComponent Owner;
 		public OnGivenActiveGameplayEffectRemoved OnActiveGameplayEffectRemovedDelegate = new();
-		private List<ActiveGameplayEffect> GameplayEffects_Internal = new();
 		public Dictionary<GameplayAttribute, Aggregator> AttributeAggregatorMap = new();
 
+		private List<ActiveGameplayEffect> GameplayEffects_Internal = new();
 		[Obsolete("use AttributeValueChangeDelegates")]
 		private Dictionary<GameplayAttribute, OnGameplayAttributeChange> AttributeChangeDelegates = new();
 		private Dictionary<GameplayAttribute, OnGameplayAttributeValueChange> AttributeValueChangeDelegates = new();

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace GameplayAbilities
 {
-    public struct TimerHandle : IEquatable<TimerHandle>
+    public record TimerHandle
     {
         private const ushort IndexBits = 24;
         private const ushort SerialNumberBits = 40;
@@ -19,31 +19,6 @@ namespace GameplayAbilities
         public void Invalidate()
         {
             Handle = 0;
-        }
-
-        public static bool operator ==(TimerHandle a, TimerHandle b)
-        {
-            return a.Handle == b.Handle;
-        }
-
-        public static bool operator !=(TimerHandle a, TimerHandle b)
-        {
-            return a.Handle != b.Handle;
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (obj is TimerHandle handle)
-            {
-                return Equals(handle);
-            }
-            
-            return false;
-        }
-
-        public bool Equals(TimerHandle other)
-        {
-            return this == other;
         }
 
         public override string ToString()
@@ -66,11 +41,6 @@ namespace GameplayAbilities
         public ulong GetSerialNumber()
         {
             return Handle >> IndexBits;
-        }
-
-        public override int GetHashCode()
-        {
-            return Handle.GetHashCode();
         }
     }
 }

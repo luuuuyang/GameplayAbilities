@@ -7,23 +7,13 @@ using UnityEngine;
 namespace GameplayAbilities
 {
 	[Serializable]
-	public class GameplayAbilitySpecConfig
+	public record GameplayAbilitySpecConfig
 	{
 		public GameplayAbility Ability;
 
 		[LabelText("Level")]
 		public ScalableFloat LevelScaleFloat = new ScalableFloat(1);
 		public GameplayEffectGrantedAbilityRemovePolicy RemovalPolicy = GameplayEffectGrantedAbilityRemovePolicy.CancelAbilityImmediately;
-
-		public static bool operator ==(GameplayAbilitySpecConfig a, GameplayAbilitySpecConfig b)
-		{
-			return a.Ability == b.Ability && a.LevelScaleFloat == b.LevelScaleFloat && a.RemovalPolicy == b.RemovalPolicy;
-		}
-
-		public static bool operator !=(GameplayAbilitySpecConfig a, GameplayAbilitySpecConfig b)
-		{
-			return !(a == b);
-		}
 	}
 
 	[LabelText("Grant Abilities While Active")]
@@ -137,12 +127,12 @@ namespace GameplayAbilities
 			}
 		}
 
-        public override bool OnActiveGameplayEffectAdded(ActiveGameplayEffectsContainer activeGEContainer, ActiveGameplayEffect activeGE)
-        {
+		public override bool OnActiveGameplayEffectAdded(ActiveGameplayEffectsContainer activeGEContainer, ActiveGameplayEffect activeGE)
+		{
 			activeGE.EventSet.OnEffectRemoved.AddListener(OnActiveGameplayEffectRemoved);
 			activeGE.EventSet.OnInhibitionChanged.AddListener(OnInhibitionChanged);
-            return true;
-        }
+			return true;
+		}
 
 		private void OnActiveGameplayEffectRemoved(GameplayEffectRemovalInfo removalInfo)
 		{
@@ -155,5 +145,5 @@ namespace GameplayAbilities
 
 			RemoveAbilities(activeGE.Handle);
 		}
-    }
+	}
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace GameplayAbilities
 {
-    public enum GameplayAbilityInstancingPolicy
+	public enum GameplayAbilityInstancingPolicy
 	{
 		[Obsolete("Use InstancedPerActor as the default to avoid confusing corner cases")]
 		NonInstanced,
@@ -24,12 +24,12 @@ namespace GameplayAbilities
 		OwnedTagAdded,
 		OwnedTagPresent
 	}
-    
-    public class GameplayAbilityActorInfo
+
+	public record GameplayAbilityActorInfo
 	{
 		public WeakReference<GameObject> OwnerActor = new(null);
 		public WeakReference<GameObject> AvatarActor = new(null);
-		public WeakReference<AbilitySystemComponent> AbilitySystemComponent = new(null); 
+		public WeakReference<AbilitySystemComponent> AbilitySystemComponent = new(null);
 
 		public virtual void InitFromActor(GameObject ownerActor, GameObject avatarActor, AbilitySystemComponent abilitySystemComponent)
 		{
@@ -39,8 +39,8 @@ namespace GameplayAbilities
 		}
 	}
 
-    public class GameplayEventData
-    {
+	public record GameplayEventData
+	{
 		public GameplayTag EventTag;
 		public GameObject Instigator;
 		public GameObject Target;
@@ -49,27 +49,25 @@ namespace GameplayAbilities
 		public GameplayTagContainer TargetTags;
 		public float EventMagnitude;
 		public GameplayAbilityTargetDataHandle TargetData;
-    }
+	}
 
 	public delegate void GameplayEventMulticastDelegate(in GameplayEventData data);
 	public delegate void GameplayEventTagMulticastDelegate(GameplayTag eventTag, in GameplayEventData data);
 
-    public struct AbilityEndedData
+	public record AbilityEndedData
 	{
 		public GameplayAbility AbilityThatEnded;
 		public GameplayAbilitySpecHandle AbilitySpecHandle;
 		public bool WasCancelled;
 
-		public AbilityEndedData(GameplayAbility ability, GameplayAbilitySpecHandle handle, bool was_cancelled)
+		public AbilityEndedData(GameplayAbility ability, GameplayAbilitySpecHandle handle, bool wasCancelled)
 		{
 			AbilityThatEnded = ability;
 			AbilitySpecHandle = handle;
-			WasCancelled = was_cancelled;
+			WasCancelled = wasCancelled;
 		}
 	}
 
-    public delegate void GameplayAbilityEndedDelegate(in AbilityEndedData data);
-
+	public delegate void GameplayAbilityEndedDelegate(in AbilityEndedData data);
 	public delegate void GenericAbilityDelegate(GameplayAbility ability);
-
 }

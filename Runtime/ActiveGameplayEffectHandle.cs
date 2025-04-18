@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace GameplayAbilities
@@ -7,7 +8,7 @@ namespace GameplayAbilities
 		public static Dictionary<ActiveGameplayEffectHandle, AbilitySystemComponent> Map = new();
 	}
 
-	public class ActiveGameplayEffectHandle
+	public class ActiveGameplayEffectHandle : IEquatable<ActiveGameplayEffectHandle>
 	{
 		private int Handle;
 		private bool PassedFiltersAndWasExecuted;
@@ -68,39 +69,39 @@ namespace GameplayAbilities
 			GlobalActiveGameplayEffectHandles.Map.Remove(this);
 		}
 
-		public static bool operator ==(ActiveGameplayEffectHandle a, ActiveGameplayEffectHandle b)
+		public bool Equals(ActiveGameplayEffectHandle other)
 		{
-			if (a is null && b is null)
-			{
-				return true;
-			}
-
-			if (a is null || b is null)
+			if (other is null)
 			{
 				return false;
 			}
-			
-			return a.Handle == b.Handle;
+
+			return Handle == other.Handle;
 		}
 
-		public static bool operator !=(ActiveGameplayEffectHandle a, ActiveGameplayEffectHandle b)
+		public static bool operator ==(ActiveGameplayEffectHandle lhs, ActiveGameplayEffectHandle rhs)
 		{
-			return !(a == b);
+			if (lhs is null)
+			{
+				return rhs is null;
+			}
+
+			return lhs.Equals(rhs);
+		}
+
+		public static bool operator !=(ActiveGameplayEffectHandle lhs, ActiveGameplayEffectHandle rhs)
+		{
+			return !(lhs == rhs);
+		}
+
+		public override bool Equals(object obj)
+		{
+			return Equals(obj as ActiveGameplayEffectHandle);
 		}
 
 		public override int GetHashCode()
 		{
 			return Handle.GetHashCode();
-		}
-
-		public override bool Equals(object obj)
-		{
-			if (obj is ActiveGameplayEffectHandle other)
-			{
-				return Handle == other.Handle;
-			}
-
-			return false;
 		}
 
 		public override string ToString()

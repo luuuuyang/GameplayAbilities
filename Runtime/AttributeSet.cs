@@ -28,7 +28,7 @@ namespace GameplayAbilities
 	}
 
 	[Serializable]
-	public class GameplayAttribute/* : ISerializationCallbackReceiver*/
+	public class GameplayAttribute : IEquatable<GameplayAttribute>/* : ISerializationCallbackReceiver*/
 	{
 		[LabelText("Attribute")]
 		[ValueDropdown("CollectAttributeNamesFromAssembly")]
@@ -184,8 +184,7 @@ namespace GameplayAbilities
 			else if (field.FieldType == typeof(GameplayAttributeData))
 			{
 				// 获取 GameplayAttributeData 的当前值
-				var attributeData = field.GetValue(attributeSet) as GameplayAttributeData;
-				if (attributeData != null)
+				if (field.GetValue(attributeSet) is GameplayAttributeData attributeData)
 				{
 					return attributeData.CurrentValue;
 				}
@@ -239,21 +238,34 @@ namespace GameplayAbilities
 			}
 		}
 
-		public static bool operator ==(GameplayAttribute a, GameplayAttribute b)
+		public bool Equals(GameplayAttribute? other)
 		{
-			return a.Property == b.Property;
+			if (other is null)
+			{
+				return false;
+			}
+
+			return Property == other.Property;
 		}
 
-		public static bool operator !=(GameplayAttribute a, GameplayAttribute b)
+		public static bool operator ==(GameplayAttribute lhs, GameplayAttribute rhs)
 		{
-			return !(a == b);
+			if (lhs is null)
+			{
+				return rhs is null;
+			}
+
+			return lhs.Equals(rhs);
+		}
+
+		public static bool operator !=(GameplayAttribute lhs, GameplayAttribute rhs)
+		{
+			return !(lhs == rhs);
 		}
 
 		public override bool Equals(object obj)
 		{
-			if (obj == null || !(obj is GameplayAttribute))
-				return false;
-			return Property == ((GameplayAttribute)obj).Property;
+			return Equals(obj as GameplayAttribute);
 		}
 
 		public override int GetHashCode()

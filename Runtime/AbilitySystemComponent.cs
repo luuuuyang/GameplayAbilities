@@ -275,9 +275,10 @@ namespace GameplayAbilities
 			}
 		}
 
-		public ActiveGameplayEffectHandle ApplyGameplayEffectToTarget(GameplayEffect gameplayEffect, AbilitySystemComponent target, float level = GameplayEffectConstants.InvalidLevel, GameplayEffectContextHandle context = new())
+		public ActiveGameplayEffectHandle ApplyGameplayEffectToTarget(GameplayEffect gameplayEffect, AbilitySystemComponent target, float level = GameplayEffectConstants.InvalidLevel, GameplayEffectContextHandle context = null)
 		{
-			if (!context.IsValid)
+			Debug.Assert(gameplayEffect);
+			if (context is not { IsValid: true })
 			{
 				context = MakeEffectContext();
 			}
@@ -354,7 +355,7 @@ namespace GameplayAbilities
 		public ActiveGameplayEffectEvents GetActiveEffectEventSet(in ActiveGameplayEffectHandle handle)
 		{
 			ActiveGameplayEffect activeEffect = ActiveGameplayEffects.GetActiveGameplayEffect(handle);
-			return activeEffect != null ? activeEffect.EventSet : null;
+			return activeEffect?.EventSet;
 		}
 
 		public OnGivenActiveGameplayEffectRemoved OnAnyGameplayEffectRemovedDelegate()
@@ -365,25 +366,25 @@ namespace GameplayAbilities
 		public OnActiveGameplayEffectRemoved_Info OnGameplayEffectRemoved_InfoDelegate(ActiveGameplayEffectHandle handle)
 		{
 			ActiveGameplayEffect activeEffect = ActiveGameplayEffects.GetActiveGameplayEffect(handle);
-			return activeEffect != null ? activeEffect.EventSet.OnEffectRemoved : null;
+			return activeEffect?.EventSet.OnEffectRemoved;
 		}
 
 		public OnActiveGameplayEffectStackChange OnGameplayEffectStackChangeDelegate(ActiveGameplayEffectHandle handle)
 		{
 			ActiveGameplayEffect activeEffect = ActiveGameplayEffects.GetActiveGameplayEffect(handle);
-			return activeEffect != null ? activeEffect.EventSet.OnStackChanged : null;
+			return activeEffect?.EventSet.OnStackChanged;
 		}
 
 		public OnActiveGameplayEffectTimeChange OnGameplayEffectTimeChangeDelegate(ActiveGameplayEffectHandle handle)
 		{
 			ActiveGameplayEffect activeEffect = ActiveGameplayEffects.GetActiveGameplayEffect(handle);
-			return activeEffect != null ? activeEffect.EventSet.OnTimeChanged : null;
+			return activeEffect?.EventSet.OnTimeChanged;
 		}
 
 		public OnActiveGameplayEffectInhibitionChanged OnGameplayEffectInhibitionChangedDelegate(ActiveGameplayEffectHandle handle)
 		{
 			ActiveGameplayEffect activeEffect = ActiveGameplayEffects.GetActiveGameplayEffect(handle);
-			return activeEffect != null ? activeEffect.EventSet.OnInhibitionChanged : null;
+			return activeEffect?.EventSet.OnInhibitionChanged;
 		}
 
 		public void BlockAbilitiesWithTags(GameplayTagContainer tags)
@@ -1496,8 +1497,8 @@ namespace GameplayAbilities
 			}
 
 			{
-				GameplayTagContainer sourceTags = triggerEventData != null ? triggerEventData.InstigatorTags : null;
-				GameplayTagContainer targetTags = triggerEventData != null ? triggerEventData.TargetTags : null;
+				GameplayTagContainer sourceTags = triggerEventData?.InstigatorTags;
+				GameplayTagContainer targetTags = triggerEventData?.TargetTags;
 
 				if (!abilitySource.CanActivateAbility(handle, actorInfo, sourceTags, targetTags, out InternalTryActivateAbilityFailureTags))
 				{

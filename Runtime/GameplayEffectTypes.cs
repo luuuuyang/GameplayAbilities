@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using Sirenix.OdinInspector;
 using System.Linq;
+using System.Text;
 
 
 namespace GameplayAbilities
@@ -26,7 +27,7 @@ namespace GameplayAbilities
     }
 
     [Serializable]
-    public struct GameplayModEvaluationChannelSettings
+    public record GameplayModEvaluationChannelSettings
     {
         [SerializeField]
         private GameplayModEvaluationChannel Channel;
@@ -41,16 +42,6 @@ namespace GameplayAbilities
                 }
                 return GameplayModEvaluationChannel.Channel0;
             }
-        }
-
-        public static bool operator ==(GameplayModEvaluationChannelSettings a, GameplayModEvaluationChannelSettings b)
-        {
-            return a.EvaluationChannel == b.EvaluationChannel;
-        }
-
-        public static bool operator !=(GameplayModEvaluationChannelSettings a, GameplayModEvaluationChannelSettings b)
-        {
-            return !(a == b);
         }
     }
 
@@ -152,7 +143,7 @@ namespace GameplayAbilities
         }
     }
 
-    public class GameplayEffectContext
+    public record GameplayEffectContext
     {
         public WeakReference<GameObject> Instigator = new(null);
         public WeakReference<GameObject> EffectCauser = new(null);
@@ -244,18 +235,23 @@ namespace GameplayAbilities
         }
     }
 
-    public struct GameplayEffectContextHandle
+    public record GameplayEffectContextHandle
     {
         private GameplayEffectContext Data;
+
+        public GameplayEffectContextHandle()
+        {
+            
+        }
 
         public GameplayEffectContextHandle(GameplayEffectContext data)
         {
             Data = data;
         }
 
-        public readonly bool IsValid => Data != null;
+        public bool IsValid => Data != null;
 
-        public readonly void GetOwnedGameplayTags(GameplayTagContainer actorTagContainer, GameplayTagContainer specTagContainer)
+        public void GetOwnedGameplayTags(GameplayTagContainer actorTagContainer, GameplayTagContainer specTagContainer)
         {
             if (IsValid)
             {
@@ -279,7 +275,7 @@ namespace GameplayAbilities
             }
         }
 
-        public readonly AbilitySystemComponent InstigatorAbilitySystemComponent
+        public AbilitySystemComponent InstigatorAbilitySystemComponent
         {
             get
             {
@@ -291,7 +287,7 @@ namespace GameplayAbilities
             }
         }
 
-        public readonly UnityEngine.Object SourceObject
+        public UnityEngine.Object SourceObject
         {
             get
             {
@@ -343,33 +339,6 @@ namespace GameplayAbilities
             {
                 return new GameplayEffectContextHandle();
             }
-        }
-
-        public static bool operator ==(GameplayEffectContextHandle a, GameplayEffectContextHandle b)
-        {
-            if (a.IsValid != b.IsValid)
-            {
-                return false;
-            }
-            if (a.Data != b.Data)
-            {
-                return false;
-            }
-            return true;
-        }
-
-        public static bool operator !=(GameplayEffectContextHandle a, GameplayEffectContextHandle b)
-        {
-            return !(a == b);
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (obj == null || !(obj is GameplayEffectContextHandle))
-            {
-                return false;
-            }
-            return this == (GameplayEffectContextHandle)obj;
         }
 
         public override string ToString()
@@ -701,7 +670,7 @@ namespace GameplayAbilities
     }
 
     [Serializable]
-    public class GameplayTagRequirements
+    public record GameplayTagRequirements
     {
         [LabelText("Must Have Tags")]
         public GameplayTagContainer RequireTags = new();
@@ -726,34 +695,24 @@ namespace GameplayAbilities
             return RequireTags.IsEmpty() && IgnoreTags.IsEmpty() && TagQuery.IsEmpty();
         }
 
-        public static bool operator ==(GameplayTagRequirements a, GameplayTagRequirements b)
-        {
-            return a.RequireTags == b.RequireTags && a.IgnoreTags == b.IgnoreTags && a.TagQuery == b.TagQuery;
-        }
-
-        public static bool operator !=(GameplayTagRequirements a, GameplayTagRequirements b)
-        {
-            return !(a == b);
-        }
-
         public override string ToString()
         {
-            string str = string.Empty;
+            StringBuilder str = new();
 
             if (RequireTags.Count > 0)
             {
-                str += $"require: {RequireTags} ";
+                str.Append($"require: {RequireTags} ");
             }
             if (IgnoreTags.Count > 0)
             {
-                str += $"ignore: {IgnoreTags} ";
+                str.Append($"ignore: {IgnoreTags} ");
             }
             if (!TagQuery.IsEmpty())
             {
-                str += TagQuery.Description;
+                str.Append(TagQuery.Description);
             }
 
-            return str;
+            return str.ToString();
         }
 
         public GameplayTagQuery ConvertTagFieldsToTagQuery()
@@ -849,18 +808,13 @@ namespace GameplayAbilities
         }
     }
 
-    public struct GameplayEffectSpecHandle : ICloneable
+    public record GameplayEffectSpecHandle
     {
         public GameplayEffectSpec Data;
 
-        public readonly bool IsValid()
+        public GameplayEffectSpecHandle()
         {
-            return Data != null;
-        }
-
-        public object Clone()
-        {
-            return new GameplayEffectSpecHandle(Data);
+            
         }
 
         public GameplayEffectSpecHandle(GameplayEffectSpec other)
@@ -868,16 +822,9 @@ namespace GameplayAbilities
             Data = other;
         }
 
-        public static bool operator ==(GameplayEffectSpecHandle a, GameplayEffectSpecHandle b)
+        public bool IsValid()
         {
-            bool bothValid = a.IsValid() && b.IsValid();
-            bool bothInvalid = !a.IsValid() && !b.IsValid();
-            return bothInvalid || (bothValid && a.Data == b.Data);
-        }
-
-        public static bool operator !=(GameplayEffectSpecHandle a, GameplayEffectSpecHandle b)
-        {
-            return !(a == b);
+            return Data != null;
         }
     }
 }
