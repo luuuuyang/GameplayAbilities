@@ -28,7 +28,7 @@ namespace GameplayAbilities
 	}
 
 	[Serializable]
-	public class GameplayAttribute : IEquatable<GameplayAttribute>/* : ISerializationCallbackReceiver*/
+	public record GameplayAttribute/* : ISerializationCallbackReceiver*/
 	{
 		[LabelText("Attribute")]
 		[ValueDropdown("CollectAttributeNamesFromAssembly")]
@@ -42,13 +42,15 @@ namespace GameplayAbilities
 				{
 					return null;
 				}
+
 				if (Attribute == null)
 				{
-					Type attributeSetType = GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>()
-										.First(t => t.Name == AttributeName.Split('.').First());
-					Attribute = attributeSetType.GetField(AttributeName.Split('.').Last(),
-						BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+					string attributeSetName = AttributeName.Split('.').First();
+					string attributeName = AttributeName.Split('.').Last();
+					Type attributeSetType = GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>().First(t => t.Name == attributeSetName);
+					Attribute = attributeSetType.GetField(attributeName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 				}
+
 				return Attribute;
 			}
 			set
@@ -89,8 +91,7 @@ namespace GameplayAbilities
 
 		public Type GetAttributeSetClass()
 		{
-			return GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>()
-				.First(t => t.Name == Property.DeclaringType.Name);
+			return GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>().First(t => t.Name == Property.DeclaringType.Name);
 		}
 
 		public bool IsSystemAttribute()
@@ -104,55 +105,16 @@ namespace GameplayAbilities
 		}
 
 #if UNITY_EDITOR
-		public static List<string> CollectAttributeNames()
-		{
-			var attributeNames = new List<string>();
-
-			// 遍历项目中的所有资源
-			string fullname = typeof(AttributeSet).FullName;
-			string[] guids = AssetDatabase.FindAssets($"t:{fullname}");
-			foreach (string guid in guids)
-			{
-				string assetPath = AssetDatabase.GUIDToAssetPath(guid);
-				UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-
-				foreach (UnityEngine.Object asset in assets)
-				{
-					// 检查是否是AttributeSet的子类
-					if (asset != null)
-					{
-						var type = asset.GetType();
-						var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-						var properties = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-						foreach (var field in fields)
-						{
-							if (field.FieldType == typeof(GameplayAttributeData))
-							{
-								attributeNames.Add(asset.name + "." + field.Name);
-							}
-						}
-					}
-				}
-			}
-
-			return attributeNames;
-		}
-
 		public static List<string> CollectAttributeNamesFromAssembly()
 		{
-			var attributeNames = new List<string>();
+			List<string> attributeNames = new List<string>();
 
-			// 获取当前程序集中的所有类型
-			var attributeSetTypes = TypeCache.GetTypesDerivedFrom<AttributeSet>()
-				.Where(t => !t.IsAbstract);
+			IEnumerable<Type> attributeSetTypes = GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>().Where(t => !t.IsAbstract);
 
-			foreach (var type in attributeSetTypes)
+			foreach (Type type in attributeSetTypes)
 			{
-				// 获取所有字段
-				var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-								 .Where(f => f.FieldType == typeof(GameplayAttributeData));
-
-				foreach (var field in fields)
+				IEnumerable<FieldInfo> fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Where(f => IsGameplayAttributeDataField(f));
+				foreach (FieldInfo field in fields)
 				{
 					attributeNames.Add($"{type.Name}.{field.Name}");
 				}
@@ -164,27 +126,23 @@ namespace GameplayAbilities
 
 		public float GetNumericValue(AttributeSet attributeSet)
 		{
-			if (string.IsNullOrEmpty(AttributeName) || attributeSet == null)
-				return 0f;
-
-			// 使用反射获取属性值
-			var type = attributeSet.GetType();
-			var field = type.GetField(AttributeName.Split('.').Last(),
-				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-
-			if (field == null)
-				return 0f;
-
-			// 检查字段类型
-			if (field.FieldType == typeof(float))
+			if (attributeSet == null)
 			{
-				// 直接获取 float 值
-				return (float)field.GetValue(attributeSet);
+				return 0f;
 			}
-			else if (field.FieldType == typeof(GameplayAttributeData))
+
+			if (Property == null)
 			{
-				// 获取 GameplayAttributeData 的当前值
-				if (field.GetValue(attributeSet) is GameplayAttributeData attributeData)
+				return 0f;
+			}
+
+			if (Property.FieldType == typeof(float))
+			{
+				return (float)Property.GetValue(attributeSet);
+			}
+			else if (Property.FieldType == typeof(GameplayAttributeData))
+			{
+				if (Property.GetValue(attributeSet) is GameplayAttributeData attributeData)
 				{
 					return attributeData.CurrentValue;
 				}
@@ -202,29 +160,22 @@ namespace GameplayAbilities
 		{
 			Debug.Assert(dest != null);
 
-			float oldValue = 0f;
-
-			// 使用反射获取属性值
-			var type = dest.GetType();
-			var field = type.GetField(AttributeName.Split('.').Last(),
-				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-
-			if (field == null)
-				return;
-
-			// 检查字段类型
-			if (field.FieldType == typeof(float))
+			if (Property == null)
 			{
-				// 直接获取 float 值
-				oldValue = (float)field.GetValue(dest);
+				return;
+			}
+
+			float oldValue;
+			if (Property.FieldType == typeof(float))
+			{
+				oldValue = (float)Property.GetValue(dest);
 				dest.PreAttributeChange(this, ref newValue);
-				field.SetValue(dest, newValue);
+				Property.SetValue(dest, newValue);
 				dest.PostAttributeChange(this, oldValue, newValue);
 			}
-			else if (field.FieldType == typeof(GameplayAttributeData))
+			else if (Property.FieldType == typeof(GameplayAttributeData))
 			{
-				// 获取 GameplayAttributeData 的当前值
-				GameplayAttributeData attributeData = field.GetValue(dest) as GameplayAttributeData;
+				GameplayAttributeData attributeData = Property.GetValue(dest) as GameplayAttributeData;
 				Debug.Assert(attributeData != null);
 
 				oldValue = attributeData.CurrentValue;
@@ -236,41 +187,6 @@ namespace GameplayAbilities
 			{
 				Debug.Assert(false);
 			}
-		}
-
-		public bool Equals(GameplayAttribute other)
-		{
-			if (other is null)
-			{
-				return false;
-			}
-
-			return Property == other.Property;
-		}
-
-		public static bool operator ==(GameplayAttribute lhs, GameplayAttribute rhs)
-		{
-			if (lhs is null)
-			{
-				return rhs is null;
-			}
-
-			return lhs.Equals(rhs);
-		}
-
-		public static bool operator !=(GameplayAttribute lhs, GameplayAttribute rhs)
-		{
-			return !(lhs == rhs);
-		}
-
-		public override bool Equals(object obj)
-		{
-			return Equals(obj as GameplayAttribute);
-		}
-
-		public override int GetHashCode()
-		{
-			return Property.GetHashCode();
 		}
 
 		public override string ToString()
