@@ -42,20 +42,14 @@ namespace GameplayAbilities
 				{
 					return null;
 				}
-
-				if (Attribute == null)
-				{
-					string attributeSetName = AttributeName.Split('.').First();
-					string attributeName = AttributeName.Split('.').Last();
-					Type attributeSetType = GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>().First(t => t.Name == attributeSetName);
-					Attribute = attributeSetType.GetField(attributeName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-				}
-
-				return Attribute;
+				
+				string attributeSetName = AttributeName.Split('.').First();
+				string attributeName = AttributeName.Split('.').Last();
+				Type attributeSetType = GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>().First(t => t.Name == attributeSetName);
+				return attributeSetType.GetField(attributeName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 			}
 			set
 			{
-				Attribute = value;
 				if (value != null)
 				{
 					AttributeName = $"{value.DeclaringType.Name}.{value.Name}";
@@ -66,8 +60,6 @@ namespace GameplayAbilities
 				}
 			}
 		}
-
-		private FieldInfo Attribute;
 
 		public GameplayAttribute()
 		{
