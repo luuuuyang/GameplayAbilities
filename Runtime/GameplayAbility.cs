@@ -103,6 +103,7 @@ namespace GameplayAbilities
 
 		public GameplayAbilityActorInfo CurrentActorInfo;
 		public GameplayAbilitySpecHandle CurrentSpecHandle;
+		public GameplayEventData CurrentEventData;
 
 		protected bool MarkPendingKillOnAbilityEnd;
 
@@ -229,13 +230,13 @@ namespace GameplayAbilities
 			return !blocked && !missing;
 		}
 
-		public void CallActivateAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, OnGameplayAbilityEnded onGameplayAbilityEndedDelegate, in GameplayEventData triggerEventData)
+		public void CallActivateAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, OnGameplayAbilityEnded onGameplayAbilityEndedDelegate, in GameplayEventData triggerEventData = null)
 		{
-			PreActivate(handle, actorInfo, onGameplayAbilityEndedDelegate);
+			PreActivate(handle, actorInfo, onGameplayAbilityEndedDelegate, triggerEventData);
 			ActivateAbility(handle, actorInfo, triggerEventData);
 		}
 
-		public virtual void PreActivate(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, OnGameplayAbilityEnded onGameplayAbilityEndedDelegate)
+		public virtual void PreActivate(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, OnGameplayAbilityEnded onGameplayAbilityEndedDelegate, in GameplayEventData triggerEventData = null)
 		{
 			actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent comp);
 
@@ -247,6 +248,11 @@ namespace GameplayAbilities
 			}
 
 			SetCurrentActorInfo(handle, actorInfo);
+
+			if (triggerEventData != null)
+			{
+				CurrentEventData = triggerEventData;
+			}
 
 			comp.HandleChangeAbilityCanBeCanceled(AssetTags, this, true);
 			comp.AddLooseGameplayTags(ActivationOwnedTags);
@@ -467,6 +473,8 @@ namespace GameplayAbilities
 
 					abilitySystemComponent.NotifyAbilityEnded(handle, this, wasCancelled);
 				}
+
+				CurrentEventData = null;
 			}
 		}
 
