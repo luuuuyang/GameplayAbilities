@@ -433,6 +433,20 @@ namespace GameplayAbilities
 			return null;
 		}
 
+		public void SetActiveGameplayEffectLevel(ActiveGameplayEffectHandle handle, int newLevel)
+		{
+			ActiveGameplayEffects.SetActiveGameplayEffectLevel(handle, newLevel);
+		}
+
+		public void SetActiveGameplayEffectLevelUsingQuery(GameplayEffectQuery query, int newLevel)
+		{
+			List<ActiveGameplayEffectHandle> activeGameplayEffectHandles = ActiveGameplayEffects.GetActiveEffects(query);
+			foreach (ActiveGameplayEffectHandle activeHandle in activeGameplayEffectHandles)
+			{
+				SetActiveGameplayEffectLevel(activeHandle, newLevel);
+			}
+		}
+
 		#region GameplayTags 
 
 		public bool HasMatchingGameplayTag(GameplayTag tagToCheck)
@@ -1712,6 +1726,39 @@ namespace GameplayAbilities
 		public List<float> GetActiveEffectsTimeRemaining(in GameplayEffectQuery query)
 		{
 			return ActiveGameplayEffects.GetActiveEffectsTimeRemaining(query);
+		}
+
+		public int GetGameplayEffectCount(GameplayEffect sourceGameplayEffect, AbilitySystemComponent optionalInstigatorFilterComponent, bool enforceOnGoingCheck = true)
+		{
+			int count = 0;
+
+			if (sourceGameplayEffect != null)
+			{
+                GameplayEffectQuery query = new()
+                {
+                    CustomMatchDelegate = (in ActiveGameplayEffect curEffect) =>
+                    {
+                        bool matches = false;
+
+                        if (curEffect.Spec.Def != null && curEffect.Spec.Def == sourceGameplayEffect)
+                        {
+                            if (optionalInstigatorFilterComponent != null)
+                            {
+                                matches = optionalInstigatorFilterComponent == curEffect.Spec.EffectContext.InstigatorAbilitySystemComponent;
+                            }
+                            else
+                            {
+                                matches = true;
+                            }
+                        }
+                        return matches;
+                    }
+                };
+
+                count = ActiveGameplayEffects.GetActiveEffectCount(query, enforceOnGoingCheck);
+			}
+
+			return count;
 		}
 
 		#region Debug

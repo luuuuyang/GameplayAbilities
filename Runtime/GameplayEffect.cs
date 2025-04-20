@@ -2610,6 +2610,24 @@ namespace GameplayAbilities
 			return removedCount;
 		}
 
+		public int GetActiveEffectCount(in GameplayEffectQuery query, bool enforceOnGoingCheck = true)
+		{
+			int count = 0;
+
+			foreach (ActiveGameplayEffect effect in GameplayEffects_Internal)
+			{
+				if (!effect.IsInhibited || !enforceOnGoingCheck)
+				{
+					if (query.Matches(effect))
+					{
+						count += effect.Spec.StackCount;
+					}
+				}
+			}
+
+			return count;
+		}
+
 		public void OnStackCountChange(ActiveGameplayEffect activeEffect, int oldStackCount, int newStackCount)
 		{
 			Debug.Log($"OnStackCountChange: {activeEffect}. OldStackCount: {oldStackCount}. NewStackCount: {newStackCount}");
@@ -2783,6 +2801,24 @@ namespace GameplayAbilities
 				AttributeValueChangeDelegates.Add(attribute, @delegate);
 			}
 			return @delegate;
+		}
+
+		public void SetActiveGameplayEffectLevel(ActiveGameplayEffectHandle handle, int newLevel)
+		{
+			foreach (ActiveGameplayEffect effect in GameplayEffects_Internal)
+			{
+				if (effect.Handle == handle)
+				{
+					if (effect.Spec.Level != newLevel)
+					{
+						effect.Spec.SetLevel(newLevel);
+
+						effect.Spec.CalculateModifierMagnitudes();
+						UpdateAllAggregatorModMagnitudes(effect);
+					}
+					break;
+				}
+			}
 		}
 
 		public void DebugCyclicAggregatorBroadcasts(Aggregator triggeredAggregator)
@@ -3076,7 +3112,7 @@ namespace GameplayAbilities
 			{
 				if (!GEComponent.CanGameplayEffectApply(activeGEContainer, GESpec))
 				{
-					Debug.LogWarning($"{GESpec.Def} could not apply. Blocked by {GEComponent}");
+					Debug.LogWarning($"{GESpec.Def.name} could not apply. Blocked by {GEComponent.name}");
 					return false;
 				}
 			}
