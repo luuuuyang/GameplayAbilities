@@ -1551,7 +1551,6 @@ namespace GameplayAbilities
 		public AbilitySystemComponent Owner;
 		public OnGivenActiveGameplayEffectRemoved OnActiveGameplayEffectRemovedDelegate = new();
 		public Dictionary<GameplayAttribute, Aggregator> AttributeAggregatorMap = new();
-
 		private List<ActiveGameplayEffect> GameplayEffects_Internal = new();
 		[Obsolete("use AttributeValueChangeDelegates")]
 		private Dictionary<GameplayAttribute, OnGameplayAttributeChange> AttributeChangeDelegates = new();
@@ -1777,14 +1776,13 @@ namespace GameplayAbilities
 				return;
 			}
 
-			Debug.Log($"Added {effectDef}");
-
 			AddCustomMagnitudeExternalDependencies(effect);
 
 			bool active = effectDef.OnAddedToActiveContainer(this, effect);
-
 			effect.IsInhibited = true;
-			Owner.SetActiveGameplayEffectInhibit(effect.Handle, !active);
+
+			ActiveGameplayEffectHandle effectHandle = effect.Handle;
+			Owner.SetActiveGameplayEffectInhibit(effectHandle, !active);
 		}
 
 		public bool HandleActiveGameplayEffectStackOverflow(in ActiveGameplayEffect activeStackableGE, in GameplayEffectSpec oldSpec, in GameplayEffectSpec overflowingSpec)
@@ -3154,7 +3152,7 @@ namespace GameplayAbilities
 				}
 			}
 
-			Debug.Log($"Applied: {GESpec.Def}");
+			Debug.Log($"Applied: {GESpec.Def.name}");
 		}
 
 		public T GetComponent<T>() where T : GameplayEffectComponent

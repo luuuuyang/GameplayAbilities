@@ -42,10 +42,22 @@ namespace GameplayAbilities
 				{
 					return null;
 				}
-				
-				string attributeSetName = AttributeName.Split('.').First();
-				string attributeName = AttributeName.Split('.').Last();
-				Type attributeSetType = GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>().First(t => t.Name == attributeSetName);
+
+				string[] attributeNameParts = AttributeName.Split('.');
+				if (attributeNameParts.Length != 2)
+				{
+					return null;
+				}
+
+				string attributeSetName = attributeNameParts[0];
+				string attributeName = attributeNameParts[1];
+				Type attributeSetType = GlobalTypeCache.GetTypesDerivedFrom<AttributeSet>().FirstOrDefault(t => t.Name == attributeSetName);
+
+				if (attributeSetType == null)
+				{
+					return null;
+				}
+
 				return attributeSetType.GetField(attributeName, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 			}
 			set
@@ -64,6 +76,11 @@ namespace GameplayAbilities
 		public GameplayAttribute()
 		{
 			Property = null;
+		}
+
+		public GameplayAttribute(string attributeName)
+		{
+			AttributeName = attributeName;
 		}
 
 		public GameplayAttribute(FieldInfo fieldInfo)

@@ -213,7 +213,7 @@ namespace GameplayAbilities
 					myHandle = appliedEffect.Handle;
 					ourCopySpec = appliedEffect.Spec;
 
-					Debug.Log($"Applied {ourCopySpec.Def}");
+					Debug.Log($"Applied {ourCopySpec.Def.name}");
 					foreach (GameplayModifierInfo modifier in spec.Def.Modifiers)
 					{
 						float magnitude = 0;
@@ -639,7 +639,7 @@ namespace GameplayAbilities
 		{
 			foreach (AttributeSet set in SpawnedAttributes)
 			{
-				if (set.GetType() == attributeClass)
+				if (set != null && set.GetType() == attributeClass)
 				{
 					return set;
 				}
@@ -653,7 +653,6 @@ namespace GameplayAbilities
 			Debug.Assert(set != null);
 			return set;
 		}
-
 
 		public AttributeSet GetOrCreateAttributeSubobject(Type attributeClass)
 		{
