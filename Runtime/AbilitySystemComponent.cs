@@ -13,6 +13,7 @@ namespace GameplayAbilities
 	public delegate void ImmunityBlockGE(in GameplayEffectSpec blockedSpec, in ActiveGameplayEffect immunityGameplayEffect);
 	public delegate bool GameplayEffectApplicationQuery(in ActiveGameplayEffectsContainer activeGEContainer, in GameplayEffectSpec geSpecToConsider);
 
+	[DefaultExecutionOrder(-1)]
 	public class AbilitySystemComponent : MonoBehaviour, IGameplayTagAssetInterface
 	{
 		public delegate void OnGameplayEffectAppliedDelegate(AbilitySystemComponent instigator, in GameplayEffectSpec spec, ActiveGameplayEffectHandle handle);
@@ -96,12 +97,14 @@ namespace GameplayAbilities
 		private void Awake()
 		{
 			ActiveGameplayEffects.RegisterWithOwner(this);
+
+			AbilityActorInfo = AbilitySystemGlobals.Instance.AllocAbilityActorInfo();
+			InitAbilityActorInfo(gameObject, gameObject);
 		}
 
 		protected virtual void Start()
 		{
-			AbilityActorInfo = AbilitySystemGlobals.Instance.AllocAbilityActorInfo();
-			InitAbilityActorInfo(gameObject, gameObject);
+
 		}
 
 		public virtual void InitAbilityActorInfo(GameObject inOwnerActor, GameObject inAvatarActor)
@@ -833,7 +836,7 @@ namespace GameplayAbilities
 
 				if (spec.Ability == abilityClass)
 				{
-					return spec;	
+					return spec;
 				}
 			}
 
@@ -1733,28 +1736,28 @@ namespace GameplayAbilities
 
 			if (sourceGameplayEffect != null)
 			{
-                GameplayEffectQuery query = new()
-                {
-                    CustomMatchDelegate = (in ActiveGameplayEffect curEffect) =>
-                    {
-                        bool matches = false;
+				GameplayEffectQuery query = new()
+				{
+					CustomMatchDelegate = (in ActiveGameplayEffect curEffect) =>
+					{
+						bool matches = false;
 
-                        if (curEffect.Spec.Def != null && curEffect.Spec.Def == sourceGameplayEffect)
-                        {
-                            if (optionalInstigatorFilterComponent != null)
-                            {
-                                matches = optionalInstigatorFilterComponent == curEffect.Spec.EffectContext.InstigatorAbilitySystemComponent;
-                            }
-                            else
-                            {
-                                matches = true;
-                            }
-                        }
-                        return matches;
-                    }
-                };
+						if (curEffect.Spec.Def != null && curEffect.Spec.Def == sourceGameplayEffect)
+						{
+							if (optionalInstigatorFilterComponent != null)
+							{
+								matches = optionalInstigatorFilterComponent == curEffect.Spec.EffectContext.InstigatorAbilitySystemComponent;
+							}
+							else
+							{
+								matches = true;
+							}
+						}
+						return matches;
+					}
+				};
 
-                count = ActiveGameplayEffects.GetActiveEffectCount(query, enforceOnGoingCheck);
+				count = ActiveGameplayEffects.GetActiveEffectCount(query, enforceOnGoingCheck);
 			}
 
 			return count;
@@ -2021,7 +2024,7 @@ namespace GameplayAbilities
 				}
 			}
 		}
-		
+
 		public void DebugCyclicAggregatorBroadcasts(Aggregator aggregator)
 		{
 			ActiveGameplayEffects.DebugCyclicAggregatorBroadcasts(aggregator);
