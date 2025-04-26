@@ -227,7 +227,7 @@ namespace GameplayAbilities
 	}
 
 	[TypeCacheTarget]
-	public class AttributeSet : ScriptableObject
+	public partial class AttributeSet : ScriptableObject
 	{
 		public GameObject OwningActor { get; set; }
 

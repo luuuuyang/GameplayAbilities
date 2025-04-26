@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace GameplayAbilities.Tests
 {
-    public class AbilitySystemTestAttributeSet : AttributeSet
+    public partial class AbilitySystemTestAttributeSet : AttributeSet
     {
         public float MaxHealth;
         public float Health;
