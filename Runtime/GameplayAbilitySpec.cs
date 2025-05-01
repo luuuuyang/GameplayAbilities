@@ -81,6 +81,7 @@ namespace GameplayAbilities
 		public bool PendingRemove;
 		public bool ActivateOnce;
 		public ActiveGameplayEffectHandle GameplayEffectHandle = new();
+		[Obsolete("Use DynamicSpecSourceTags which better represents what this variable does")]
 		public GameplayTagContainer DynamicAbilityTags = new();
 		public GameplayTagContainer DynamicSpecSourceTags => DynamicAbilityTags;
 		public Dictionary<GameplayTag, float> SetByCallerTagMagnitudes = new();
