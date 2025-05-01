@@ -1541,7 +1541,7 @@ namespace GameplayAbilities
 					}
 					else
 					{
-						Debug.Log($"Can't activate instanced per actor ability {ability} when their is already a currently active instance for this actor.");
+						Debug.LogWarning($"Can't activate instanced per actor ability {ability.name} when their is already a currently active instance for this actor.");
 						return false;
 					}
 				}
