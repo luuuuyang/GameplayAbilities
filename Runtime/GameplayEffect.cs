@@ -2041,24 +2041,27 @@ namespace GameplayAbilities
 			{
 				bool runConditionalEffects = true;
 
-				GameplayEffectCustomExecutionParams executionParams = new GameplayEffectCustomExecutionParams();
-				GameplayEffectCustomExecutionOutput executionOutput = new GameplayEffectCustomExecutionOutput();
-				curExecDef.CalculationClass.Execute(executionParams, out executionOutput);
-
-				runConditionalEffects = executionOutput.ShouldTriggerConditionalGameplayEffects;
-
-				List<GameplayModifierEvaluatedData> outModifiers = executionOutput.OutputModifiers;
-
-				bool applyStackCountToEmittedMods = !executionOutput.IsStackCountHandledManually;
-				int specStackCount = specToUse.StackCount;
-
-				foreach (GameplayModifierEvaluatedData curExecMod in outModifiers)
+				if (curExecDef.CalculationClass != null)
 				{
-					if (applyStackCountToEmittedMods && specStackCount > 1)
+					GameplayEffectCustomExecutionParams executionParams = new GameplayEffectCustomExecutionParams();
+					GameplayEffectCustomExecutionOutput executionOutput = new GameplayEffectCustomExecutionOutput();
+					curExecDef.CalculationClass.Execute(executionParams, out executionOutput);
+
+					runConditionalEffects = executionOutput.ShouldTriggerConditionalGameplayEffects;
+
+					List<GameplayModifierEvaluatedData> outModifiers = executionOutput.OutputModifiers;
+
+					bool applyStackCountToEmittedMods = !executionOutput.IsStackCountHandledManually;
+					int specStackCount = specToUse.StackCount;
+
+					foreach (GameplayModifierEvaluatedData curExecMod in outModifiers)
 					{
-						curExecMod.Magnitude = GameplayEffectUtilities.ComputeStackedModifierMagnitude(curExecMod.Magnitude, specStackCount, curExecMod.ModifierOp);
+						if (applyStackCountToEmittedMods && specStackCount > 1)
+						{
+							curExecMod.Magnitude = GameplayEffectUtilities.ComputeStackedModifierMagnitude(curExecMod.Magnitude, specStackCount, curExecMod.ModifierOp);
+						}
+						modifierSuccessfullyExecuted |= InternalExecuteMod(specToUse, curExecMod);
 					}
-					modifierSuccessfullyExecuted |= InternalExecuteMod(specToUse, curExecMod);
 				}
 
 				if (runConditionalEffects)
