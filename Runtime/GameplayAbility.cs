@@ -217,7 +217,7 @@ namespace GameplayAbilities
 				CheckForBlocked(targetTags, TargetBlockedTags);
 			}
 
-			CheckForRequired(abilitySystemComponent.GetOwnedGameplayTags(), ActivationBlockedTags);
+			CheckForRequired(abilitySystemComponent.GetOwnedGameplayTags(), ActivationRequiredTags);
 			if (sourceTags is not null)
 			{
 				CheckForRequired(sourceTags, SourceRequiredTags);
@@ -293,8 +293,10 @@ namespace GameplayAbilities
 			return true;
 		}
 
-		public virtual bool CommitAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, GameplayTagContainer optionalRelevantTags)
+		public virtual bool CommitAbility(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, out GameplayTagContainer optionalRelevantTags)
 		{
+			optionalRelevantTags = new GameplayTagContainer();
+
 			if (!CommitCheck(handle, actorInfo, optionalRelevantTags))
 			{
 				return false;
@@ -371,7 +373,7 @@ namespace GameplayAbilities
 
 		public GameplayTagContainer GetCooldownTags()
 		{
-			return Cooldown.GrantedTags;
+			return Cooldown != null ? Cooldown.GrantedTags : null;
 		}
 
 		public virtual bool CheckCost(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo, GameplayTagContainer optionalRelevantTags)
@@ -398,7 +400,7 @@ namespace GameplayAbilities
 
 		public GameplayTagContainer GetCostTags()
 		{
-			return Cost.GrantedTags;
+			return Cost != null ? Cost.GrantedTags : null;
 		}
 
 		public virtual void CommitExecute(GameplayAbilitySpecHandle handle, in GameplayAbilityActorInfo actorInfo)
@@ -749,7 +751,7 @@ namespace GameplayAbilities
 
 		public virtual void OnAvatarSet(GameplayAbilityActorInfo actorInfo, GameplayAbilitySpec spec)
 		{
-
+			// Projects may want to initiate passives or do other "BeginPlay" type of logic here.
 		}
 
 		public virtual void SetCurrentActorInfo(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo)
