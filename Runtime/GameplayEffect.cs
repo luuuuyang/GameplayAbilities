@@ -481,7 +481,7 @@ namespace GameplayAbilities
 	[Serializable]
 	public record ConditionalGameplayEffect
 	{
-		public GameplayEffect Effect;
+		public GameplayEffect EffectClass;
 		public GameplayTagContainer RequiredSourceTags;
 
 		public bool CanApply(in GameplayTagContainer sourceTags, float sourceLevel)
@@ -491,7 +491,7 @@ namespace GameplayAbilities
 
 		public GameplayEffectSpecHandle CreateSpec(GameplayEffectContextHandle effectContext, float sourceLevel)
 		{
-			return Effect != null ? new GameplayEffectSpecHandle(new GameplayEffectSpec(Effect, effectContext, sourceLevel)) : new GameplayEffectSpecHandle();
+			return EffectClass != null ? new GameplayEffectSpecHandle(new GameplayEffectSpec(EffectClass, effectContext, sourceLevel)) : new GameplayEffectSpecHandle();
 		}
 	}
 
@@ -505,7 +505,8 @@ namespace GameplayAbilities
 
 		[ShowIf("@CalculationClass != null && (CalculationClass.RelevantAttributesToCapture.Count > 0 || CalculationClass.InvalidScopedModifierAttributes.Count > 0 || CalculationClass.ValidTransientAggregatorIdentifiers.Count > 0)")]
 		public List<GameplayEffectExecutionScopedModifierInfo> CalculationModifiers;
-
+		
+		[Tooltip("Other Gameplay Effects that will be applied to the target of this execution if the execution is successful. Note if no execution class is selected, these will always apply.")]
 		public List<ConditionalGameplayEffect> ConditionalGameplayEffects;
 
 		public readonly void GetAttributeCaptureDefinitions(List<GameplayEffectAttributeCaptureDefinition> captureDefs)

@@ -33,7 +33,7 @@ namespace GameplayAbilities
             List<GameplayEffectSpecHandle> targetEffectSpecs = new();
             foreach (ConditionalGameplayEffect conditionalEffect in OnApplicationGameplayEffects)
             {
-                GameplayEffect gameplayEffectDef = conditionalEffect.Effect;
+                GameplayEffect gameplayEffectDef = conditionalEffect.EffectClass;
                 if (gameplayEffectDef == null)
                 {
                     continue;
