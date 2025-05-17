@@ -418,7 +418,7 @@ namespace GameplayAbilities
 					captureDefs.Add(AttributeBasedMagnitude.BackingAttribute);
 					break;
 				case GameplayEffectMagnitudeCalculation.CustomCalculationClass:
-					// captureDefs.Add(CustomMagnitude.CalculationClassMagnitude.CaptureAttribute);
+					captureDefs.AddRange(CustomMagnitude.CalculationClassMagnitude.AttributeCaptureDefinitions);
 					break;
 			}
 		}
