@@ -718,22 +718,22 @@ namespace GameplayAbilities
 			return false;
 		}
 
-		public bool ShouldRefreshLinkedAggregator(Aggregator changedaggregator)
+		public bool ShouldRefreshLinkedAggregator(in Aggregator changedAggregator)
 		{
-			return BackingDefinition.Snapshot == false && (changedaggregator is null || changedaggregator == AttributeAggregator);
+			return BackingDefinition.Snapshot == false && (changedAggregator is null || changedAggregator == AttributeAggregator);
 		}
 
 		public void RegisterLinkedAggregatorCallbacks(ActiveGameplayEffectHandle handle)
 		{
 			if (BackingDefinition.Snapshot == false)
 			{
-				AttributeAggregator.AddDependent(handle);
+				AttributeAggregator?.AddDependent(handle);
 			}
 		}
 
 		public void UnregisterLinkedAggregatorCallbacks(ActiveGameplayEffectHandle handle)
 		{
-			AttributeAggregator.RemoveDependent(handle);
+			AttributeAggregator?.RemoveDependent(handle);
 		}
 
 		public bool AttemptAddAggregatorModsToAggregator(Aggregator aggregatorToAddTo)
