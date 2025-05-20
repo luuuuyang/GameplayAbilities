@@ -812,9 +812,15 @@ namespace GameplayAbilities
 		{
 			bool sourceAttribute = captureDefinition.AttributeSource == GameplayEffectAttributeCaptureSource.Source;
 			List<GameplayEffectAttributeCaptureSpec> attributeArray = sourceAttribute ? SourceAttributes : TargetAttributes;
+
 			if (!attributeArray.Exists((element) => element.BackingDefinition == captureDefinition))
 			{
 				attributeArray.Add(new GameplayEffectAttributeCaptureSpec(captureDefinition));
+
+				if (!captureDefinition.Snapshot)
+				{
+					HasNonSnapshottedAttributes = true;
+				}
 			}
 		}
 
