@@ -197,6 +197,7 @@ namespace GameplayAbilities
 		public float CalculateMagnitude(in GameplayEffectSpec relevantSpec)
 		{
 			GameplayModMagnitudeCalculation calcCDO = CalculationClassMagnitude;
+			Debug.Assert(calcCDO != null);
 
 			float customBaseValue = calcCDO.CalculateBaseMagnitude_Implementation(relevantSpec);
 
@@ -412,13 +413,16 @@ namespace GameplayAbilities
 		public void GetAttributeCaptureDefinitions(List<GameplayEffectAttributeCaptureDefinition> captureDefs)
 		{
 			captureDefs.Clear();
+
 			switch (MagnitudeCalculationType)
 			{
 				case GameplayEffectMagnitudeCalculation.AttributeBased:
 					captureDefs.Add(AttributeBasedMagnitude.BackingAttribute);
 					break;
 				case GameplayEffectMagnitudeCalculation.CustomCalculationClass:
-					captureDefs.AddRange(CustomMagnitude.CalculationClassMagnitude.AttributeCaptureDefinitions);
+					GameplayModMagnitudeCalculation calcCDO = CustomMagnitude.CalculationClassMagnitude;
+					Debug.Assert(calcCDO != null);
+					captureDefs.AddRange(calcCDO.AttributeCaptureDefinitions);
 					break;
 			}
 		}
