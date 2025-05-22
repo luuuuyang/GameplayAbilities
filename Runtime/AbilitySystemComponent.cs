@@ -270,6 +270,16 @@ namespace GameplayAbilities
 			ActiveGameplayEffects.GetAllActiveGameplayEffectSpecs(outSpecCopies);
 		}
 
+		public List<ActiveGameplayEffectHandle> GetActiveEffects(in GameplayEffectQuery query)
+		{
+			return ActiveGameplayEffects.GetActiveEffects(query);
+		}
+
+		public List<ActiveGameplayEffectHandle> GetActiveEffectsWithAllTags(GameplayTagContainer tags)
+		{
+			return GetActiveEffects(GameplayEffectQuery.MakeQuery_MatchAllEffectTags(tags));
+		}
+
 		public void NotifyTagMap_StackCountChange(in GameplayTagContainer container)
 		{
 			foreach (GameplayTag tag in container)
