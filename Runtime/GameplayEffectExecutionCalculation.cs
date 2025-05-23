@@ -8,8 +8,8 @@ namespace GameplayAbilities
 {
     public class GameplayEffectCustomExecutionParams
     {
-        private Dictionary<GameplayEffectAttributeCaptureDefinition, Aggregator> ScopedModifierAggregators;
-        private Dictionary<GameplayTag, Aggregator> ScopedTransientAggregators;
+        private Dictionary<GameplayEffectAttributeCaptureDefinition, Aggregator> ScopedModifierAggregators = new();
+        private Dictionary<GameplayTag, Aggregator> ScopedTransientAggregators = new();
         public GameplayEffectSpec OwningSpec { get; private set; }
         public GameplayEffectSpec OwningSpecForPreExecuteMod => OwningSpec;
         public WeakReference<AbilitySystemComponent> TargetAbilitySystemComponent { get; private set; }
@@ -33,8 +33,7 @@ namespace GameplayAbilities
 
             foreach (GameplayEffectExecutionScopedModifierInfo curScopedMod in scopedMods)
             {
-                Aggregator scopedAggregator = null;
-
+                Aggregator scopedAggregator;
                 if (curScopedMod.AggregatorType == GameplayEffectScopedModifierAggregatorType.CapturedAttributeBacked)
                 {
                     if (ScopedModifierAggregators.TryGetValue(curScopedMod.CaptureAttribute, out scopedAggregator))
@@ -90,7 +89,7 @@ namespace GameplayAbilities
             return OwningSpec.EffectContext.InstigatorAbilitySystemComponent;
         }
 
-        public bool AttemptCalculateAttributeMagnitude(in GameplayEffectAttributeCaptureDefinition captureDef, in AggregatorEvaluateParameters evalParams, ref float magnitude)
+        public bool AttemptCalculateCapturedAttributeMagnitude(in GameplayEffectAttributeCaptureDefinition captureDef, in AggregatorEvaluateParameters evalParams, ref float magnitude)
         {
             Debug.Assert(OwningSpec != null);
 
@@ -360,7 +359,12 @@ namespace GameplayAbilities
         }
 #endif
 
-        public virtual void Execute(in GameplayEffectCustomExecutionParams executionParams, GameplayEffectCustomExecutionOutput executionOutput)
+        public void Execute(in GameplayEffectCustomExecutionParams executionParams, GameplayEffectCustomExecutionOutput executionOutput)
+        {
+            Execute_Implementation(executionParams, executionOutput);
+        }
+
+        protected virtual void Execute_Implementation(in GameplayEffectCustomExecutionParams executionParams, GameplayEffectCustomExecutionOutput executionOutput)
         {
 
         }
