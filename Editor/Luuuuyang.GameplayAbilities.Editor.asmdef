@@ -2,7 +2,8 @@
     "name": "Luuuuyang.GameplayAbilities.Editor",
     "rootNamespace": "",
     "references": [
-        "GUID:a1eef689f89b81341b0d46cb8530e513"
+        "GUID:a1eef689f89b81341b0d46cb8530e513",
+        "GUID:3c904597c18287341bf2531ab2635573"
     ],
     "includePlatforms": [
         "Editor"

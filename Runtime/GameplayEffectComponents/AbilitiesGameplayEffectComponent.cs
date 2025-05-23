@@ -10,7 +10,6 @@ namespace GameplayAbilities
 	public record GameplayAbilitySpecConfig
 	{
 		public GameplayAbility Ability;
-
 		[LabelText("Level")]
 		public ScalableFloat LevelScaleFloat = new ScalableFloat(1);
 		public GameplayEffectGrantedAbilityRemovePolicy RemovalPolicy = GameplayEffectGrantedAbilityRemovePolicy.CancelAbilityImmediately;

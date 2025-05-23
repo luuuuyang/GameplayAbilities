@@ -331,7 +331,7 @@ namespace GameplayAbilities
 			if (activeGE.IsInhibited != inhibit)
 			{
 				activeGE.IsInhibited = inhibit;
-
+				
 				if (inhibit)
 				{
 					ActiveGameplayEffects.RemoveActiveGameplayEffectGrantedTagsAndModifiers(activeGE);
@@ -2040,6 +2040,6 @@ namespace GameplayAbilities
 			ActiveGameplayEffects.DebugCyclicAggregatorBroadcasts(aggregator);
 		}
 
-		#endregion
-	}
+        #endregion
+    }
 }

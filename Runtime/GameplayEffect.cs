@@ -451,9 +451,7 @@ namespace GameplayAbilities
 	public class GameplayEffectExecutionScopedModifierInfo
 	{
 		public GameplayEffectAttributeCaptureDefinition CaptureAttribute;
-		[HideInInspector]
 		public GameplayTag TransientAggregatorIdentifier;
-		[HideInInspector]
 		public GameplayEffectScopedModifierAggregatorType AggregatorType;
 		public GameplayModOp ModifierOp;
 		public GameplayEffectModifierMagnitude ModifierMagnitude;
@@ -504,18 +502,26 @@ namespace GameplayAbilities
 	{
 		public GameplayEffectExecutionCalculation CalculationClass;
 
-		[ShowIf("@CalculationClass != null && CalculationClass.RequiresPassedInTags")]
-		public GameplayTagContainer PassedInTags;
-
 		[ShowIf("@CalculationClass != null && (CalculationClass.RelevantAttributesToCapture.Count > 0 || CalculationClass.InvalidScopedModifierAttributes.Count > 0 || CalculationClass.ValidTransientAggregatorIdentifiers.Count > 0)")]
 		public List<GameplayEffectExecutionScopedModifierInfo> CalculationModifiers;
-		
+
 		[Tooltip("Other Gameplay Effects that will be applied to the target of this execution if the execution is successful. Note if no execution class is selected, these will always apply.")]
 		public List<ConditionalGameplayEffect> ConditionalGameplayEffects;
+
+		[ShowIf("@CalculationClass != null && CalculationClass.RequiresPassedInTags")]
+		public GameplayTagContainer PassedInTags;
 
 		public readonly void GetAttributeCaptureDefinitions(List<GameplayEffectAttributeCaptureDefinition> captureDefs)
 		{
 			captureDefs.Clear();
+
+			if (CalculationClass != null)
+			{
+				GameplayEffectExecutionCalculation calculationCDO = CalculationClass;
+				Debug.Assert(calculationCDO != null);
+
+				captureDefs.AddRange(calculationCDO.AttributeCaptureDefinitions);
+			}
 
 			foreach (GameplayEffectExecutionScopedModifierInfo curScopedMod in CalculationModifiers)
 			{
@@ -666,7 +672,12 @@ namespace GameplayAbilities
 		public GameplayEffectAttributeCaptureDefinition BackingDefinition;
 		public Aggregator AttributeAggregator;
 
-		public GameplayEffectAttributeCaptureSpec(GameplayEffectAttributeCaptureDefinition definition)
+		public GameplayEffectAttributeCaptureSpec()
+		{
+
+		}
+
+		public GameplayEffectAttributeCaptureSpec(in GameplayEffectAttributeCaptureDefinition definition)
 		{
 			BackingDefinition = definition;
 			AttributeAggregator = new Aggregator();
@@ -684,6 +695,7 @@ namespace GameplayAbilities
 				basevalue = AttributeAggregator.BaseValue;
 				return true;
 			}
+
 			return false;
 		}
 
@@ -694,6 +706,7 @@ namespace GameplayAbilities
 				magnitude = AttributeAggregator.Evaluate(evalParams);
 				return true;
 			}
+
 			return false;
 		}
 
@@ -704,6 +717,29 @@ namespace GameplayAbilities
 				magnitude = AttributeAggregator.EvaluateBonus(evalParams);
 				return true;
 			}
+
+			return false;
+		}
+
+		public bool AttemptCalculateAttributeContributionMagnitude(AggregatorEvaluateParameters evalParams, ActiveGameplayEffectHandle handle, ref float magnitude)
+		{
+			if (AttributeAggregator is not null)
+			{
+				magnitude = AttributeAggregator.EvaluateContribution(evalParams, handle);
+				return true;
+			}
+
+			return false;
+		}
+
+		public bool AttemptGetAttributeAggregatorSnapshot(ref Aggregator snapshotAggregator)
+		{
+			if (AttributeAggregator is not null)
+			{
+				snapshotAggregator.TakeSnapshotOf(AttributeAggregator);
+				return true;
+			}
+
 			return false;
 		}
 
@@ -718,9 +754,32 @@ namespace GameplayAbilities
 			return false;
 		}
 
+		public bool AttemptCalculateAttributeMagnitudeWithBase(in AggregatorEvaluateParameters evalParams, float baseValue, ref float magnitude)
+		{
+			if (AttributeAggregator is not null)
+			{
+				magnitude = AttributeAggregator.EvaluateWithBase(baseValue, evalParams);
+				return true;
+			}
+
+			return false;
+		}
+
 		public bool ShouldRefreshLinkedAggregator(in Aggregator changedAggregator)
 		{
 			return BackingDefinition.Snapshot == false && (changedAggregator is null || changedAggregator == AttributeAggregator);
+		}
+
+		public bool AttemptGatherAttributeMods(in AggregatorEvaluateParameters evalParams, Dictionary<GameplayModEvaluationChannel, List<AggregatorMod>[]> modMap)
+		{
+			if (AttributeAggregator is not null)
+			{
+				AttributeAggregator.EvaluateQualificationForAllMods(evalParams);
+				AttributeAggregator.GetAllAggregatorMods(modMap);
+				return true;
+			}
+
+			return false;
 		}
 
 		public void RegisterLinkedAggregatorCallbacks(ActiveGameplayEffectHandle handle)
@@ -738,8 +797,21 @@ namespace GameplayAbilities
 
 		public bool AttemptAddAggregatorModsToAggregator(Aggregator aggregatorToAddTo)
 		{
-			aggregatorToAddTo.AddModsFrom(AttributeAggregator);
-			return true;
+			if (AttributeAggregator is not null)
+			{
+				aggregatorToAddTo.AddModsFrom(AttributeAggregator);
+				return true;
+			}
+
+			return false;
+		}
+
+		public void SwapAggregator(Aggregator from, Aggregator to)
+		{
+			if (AttributeAggregator == from)
+			{
+				AttributeAggregator = to;
+			}
 		}
 	}
 
@@ -801,6 +873,7 @@ namespace GameplayAbilities
 			{
 				bool sourceComponent = captureSource == GameplayEffectAttributeCaptureSource.Source;
 				List<GameplayEffectAttributeCaptureSpec> attributeArray = sourceComponent ? SourceAttributes : TargetAttributes;
+
 				foreach (GameplayEffectAttributeCaptureSpec curCaptureSpec in attributeArray)
 				{
 					abilitySystemComponent.CaptureAttributeForGameplayEffect(curCaptureSpec);
@@ -847,6 +920,19 @@ namespace GameplayAbilities
 			foreach (GameplayEffectAttributeCaptureSpec captureSpec in TargetAttributes)
 			{
 				captureSpec.UnregisterLinkedAggregatorCallbacks(handle);
+			}
+		}
+
+		public void SwapAggregator(Aggregator from, Aggregator to)
+		{
+			foreach (GameplayEffectAttributeCaptureSpec captureSpec in SourceAttributes)
+			{
+				captureSpec.SwapAggregator(from, to);
+			}
+
+			foreach (GameplayEffectAttributeCaptureSpec captureSpec in TargetAttributes)
+			{
+				captureSpec.SwapAggregator(from, to);
 			}
 		}
 	}
@@ -2053,9 +2139,12 @@ namespace GameplayAbilities
 
 				if (curExecDef.CalculationClass != null)
 				{
-					GameplayEffectCustomExecutionParams executionParams = new GameplayEffectCustomExecutionParams();
-					GameplayEffectCustomExecutionOutput executionOutput = new GameplayEffectCustomExecutionOutput();
-					curExecDef.CalculationClass.Execute(executionParams, out executionOutput);
+					GameplayEffectExecutionCalculation execCDO = curExecDef.CalculationClass;
+					Debug.Assert(execCDO != null);
+
+					GameplayEffectCustomExecutionParams executionParams = new(specToUse, curExecDef.CalculationModifiers, Owner, curExecDef.PassedInTags);
+					GameplayEffectCustomExecutionOutput executionOutput = new();
+					execCDO.Execute(executionParams, executionOutput);
 
 					runConditionalEffects = executionOutput.ShouldTriggerConditionalGameplayEffects;
 
@@ -2328,10 +2417,7 @@ namespace GameplayAbilities
 					float evaluatedMagnitude = effect.Spec.GetModifierMagnitude(i, true);
 
 					Aggregator aggregator = FindOrCreateAttributeAggregator(modInfo.Attribute);
-					if (aggregator != null)
-					{
-						aggregator.AddAggregatorMod(evaluatedMagnitude, modInfo.ModifierOp, modInfo.EvaluationChannelSettings.EvaluationChannel, modInfo.SourceTags, modInfo.TargetTags, effect.Handle);
-					}
+					aggregator?.AddAggregatorMod(evaluatedMagnitude, modInfo.ModifierOp, modInfo.EvaluationChannelSettings.EvaluationChannel, modInfo.SourceTags, modInfo.TargetTags, effect.Handle);
 				}
 			}
 			else
@@ -2705,7 +2791,7 @@ namespace GameplayAbilities
 				{
 					GameplayEffectSpec spec = activeEffect.Spec;
 
-					bool mustUpdateAttributeAggregators = !activeEffect.IsInhibited && spec.Period <= 0;
+					bool mustUpdateAttributeAggregators = !activeEffect.IsInhibited && spec.Period <= GameplayEffectConstants.NoPeriod;
 
 					HashSet<GameplayAttribute> attributesToUpdate = new();
 
@@ -2735,6 +2821,8 @@ namespace GameplayAbilities
 		{
 			if (AttributeAggregatorMap.TryGetValue(attribute, out Aggregator aggregator))
 			{
+				Debug.Log($"Removing entry in AttributeAggregatorMap for {attribute}");
+
 				aggregator.OnDirty = null;
 				aggregator.OnDirtyRecursive = null;
 
@@ -2764,10 +2852,7 @@ namespace GameplayAbilities
 				}
 
 				Aggregator aggregator = FindOrCreateAttributeAggregator(attribute);
-				if (aggregator != null)
-				{
-					aggregator.UpdateAggregatorMod(activeEffect.Handle, attribute, spec, activeEffect.Handle);
-				}
+				aggregator?.UpdateAggregatorMod(activeEffect.Handle, attribute, spec, activeEffect.Handle);
 			}
 		}
 
@@ -2883,11 +2968,11 @@ namespace GameplayAbilities
 		public ScalableFloat Period = new();
 
 		[FoldoutGroup("Duration")]
-		[ShowIf("@Period.Value != 0")]
+		[ShowIf("@DurationPolicy != GameplayEffectDurationType.Instant && Period.Value != 0")]
 		public bool ExecutePeriodicEffectOnApplication = true;
 
 		[FoldoutGroup("Duration")]
-		[ShowIf("@Period.Value != 0")]
+		[ShowIf("@DurationPolicy != GameplayEffectDurationType.Instant && Period.Value != 0")]
 		public GameplayEffectPeriodInhibitionRemovedPolicy PeriodInhibitionPolicy;
 
 		[FoldoutGroup("GameplayEffect")]
@@ -3183,7 +3268,7 @@ namespace GameplayAbilities
 
 		public T AddComponent<T>() where T : GameplayEffectComponent, new()
 		{
-			T component = new();
+			T component = CreateInstance<T>();
 			GEComponents.Add(component);
 			return component;
 		}
@@ -3193,7 +3278,7 @@ namespace GameplayAbilities
 			T component = GetComponent<T>();
 			if (component == null)
 			{
-				component = new T();
+				component = CreateInstance<T>();
 				GEComponents.Add(component);
 			}
 			return component;

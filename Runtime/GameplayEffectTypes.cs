@@ -133,7 +133,7 @@ namespace GameplayAbilities
             Attribute = attribute;
             ModifierOp = modifierOp;
             Magnitude = magnitude;
-            Handle = handle is not null ? handle : new();
+            Handle = handle ?? new();
             IsValid = true;
         }
 
@@ -241,7 +241,7 @@ namespace GameplayAbilities
 
         public GameplayEffectContextHandle()
         {
-            
+
         }
 
         public GameplayEffectContextHandle(GameplayEffectContext data)
@@ -272,6 +272,18 @@ namespace GameplayAbilities
             if (IsValid)
             {
                 Data.SetAbility(gameplayAbility);
+            }
+        }
+
+        public GameObject Instigator
+        {
+            get
+            {
+                if (IsValid && Data.Instigator.TryGetTarget(out GameObject instigator))
+                {
+                    return instigator;
+                }
+                return null;
             }
         }
 
@@ -814,7 +826,7 @@ namespace GameplayAbilities
 
         public GameplayEffectSpecHandle()
         {
-            
+
         }
 
         public GameplayEffectSpecHandle(GameplayEffectSpec other)

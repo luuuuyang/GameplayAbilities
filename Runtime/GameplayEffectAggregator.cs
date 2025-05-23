@@ -364,6 +364,19 @@ namespace GameplayAbilities
 			return Evaluate(parameters) - BaseValue;
 		}
 
+		public float EvaluateContribution(in AggregatorEvaluateParameters parameters, ActiveGameplayEffectHandle activeHandle)
+		{
+			if (activeHandle.IsValid())
+			{
+				AggregatorEvaluateParameters paramsExcludingHandle = new();
+				paramsExcludingHandle.IgnoreHandles.Add(activeHandle);
+
+				return Evaluate(parameters) - Evaluate(paramsExcludingHandle);
+			}
+
+			return 0f;
+		}
+
 		public void EvaluateQualificationForAllMods(in AggregatorEvaluateParameters parameters)
 		{
 			ModChannels.EvaluateQualificationForAllMods(parameters);

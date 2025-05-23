@@ -9,6 +9,7 @@ namespace GameplayAbilities
 	{
 		[FoldoutGroup("Attributes")]
 		[SerializeField]
+		[PropertyOrder(2)]
 		protected List<GameplayEffectAttributeCaptureDefinition> RelevantAttributesToCapture = new();
 
 		public virtual List<GameplayEffectAttributeCaptureDefinition> AttributeCaptureDefinitions
