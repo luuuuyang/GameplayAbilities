@@ -543,8 +543,8 @@ namespace GameplayAbilities
 		[ShowIf("@AbilitySystemGlobals.Instance.ShouldAllowGameplayModEvaluationChannels()")]
 		public GameplayModEvaluationChannelSettings EvaluationChannelSettings;
 		// used for Execution or MMC
-		public GameplayTagRequirements SourceTags;
-		public GameplayTagRequirements TargetTags;
+		public GameplayTagRequirements SourceTags = new();
+		public GameplayTagRequirements TargetTags = new();
 	}
 
 	[Serializable]
