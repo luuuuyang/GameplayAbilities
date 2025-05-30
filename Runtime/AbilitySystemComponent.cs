@@ -331,7 +331,7 @@ namespace GameplayAbilities
 			if (activeGE.IsInhibited != inhibit)
 			{
 				activeGE.IsInhibited = inhibit;
-				
+
 				if (inhibit)
 				{
 					ActiveGameplayEffects.RemoveActiveGameplayEffectGrantedTagsAndModifiers(activeGE);
@@ -358,6 +358,16 @@ namespace GameplayAbilities
 		public bool RemoveActiveGameplayEffect(ActiveGameplayEffectHandle handle, int stacksToRemove = -1)
 		{
 			return ActiveGameplayEffects.RemoveActiveGameplayEffect(handle, stacksToRemove);
+		}
+
+		public void UpdateActiveGameplayEffectSetByCallerMagnitude(ActiveGameplayEffectHandle activeHandle, GameplayTag setByCallerTag, float magnitude)
+		{
+			ActiveGameplayEffects.UpdateActiveGameplayEffectSetByCallerMagnitude(activeHandle, setByCallerTag, magnitude);
+		}
+
+		public void UpdateActiveGameplayEffectSetByCallerMagnitudes(ActiveGameplayEffectHandle activeHandle, in Dictionary<GameplayTag, float> newSetByCallerValues)
+		{
+			ActiveGameplayEffects.UpdateActiveGameplayEffectSetByCallerMagnitudes(activeHandle, newSetByCallerValues);
 		}
 
 		public ActiveGameplayEffect GetActiveGameplayEffect(in ActiveGameplayEffectHandle handle)
@@ -2040,6 +2050,6 @@ namespace GameplayAbilities
 			ActiveGameplayEffects.DebugCyclicAggregatorBroadcasts(aggregator);
 		}
 
-        #endregion
-    }
+		#endregion
+	}
 }

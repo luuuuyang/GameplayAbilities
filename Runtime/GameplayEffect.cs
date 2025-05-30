@@ -2918,6 +2918,33 @@ namespace GameplayAbilities
 			}
 		}
 
+		public void UpdateActiveGameplayEffectSetByCallerMagnitude(ActiveGameplayEffectHandle activeHandle, in GameplayTag setByCallerTag, float magnitude)
+		{
+			ActiveGameplayEffect effect = GetActiveGameplayEffect(activeHandle);
+			if (effect is not null)
+			{
+				effect.Spec.SetSetByCallerMagnitude(setByCallerTag, magnitude);
+				effect.Spec.CalculateModifierMagnitudes();
+
+				UpdateAllAggregatorModMagnitudes(effect);
+			}
+		}
+
+		public void UpdateActiveGameplayEffectSetByCallerMagnitudes(ActiveGameplayEffectHandle activeHandle, in Dictionary<GameplayTag, float> newSetByCallerValues)
+		{
+			ActiveGameplayEffect effect = GetActiveGameplayEffect(activeHandle);
+			if (effect is not null)
+			{
+				foreach (KeyValuePair<GameplayTag, float> curPair in newSetByCallerValues)
+				{
+					effect.Spec.SetSetByCallerMagnitude(curPair.Key, curPair.Value);
+				}
+				effect.Spec.CalculateModifierMagnitudes();
+
+				UpdateAllAggregatorModMagnitudes(effect);
+			}
+		}
+
 		public void DebugCyclicAggregatorBroadcasts(Aggregator triggeredAggregator)
 		{
 			foreach (KeyValuePair<GameplayAttribute, Aggregator> it in AttributeAggregatorMap)
