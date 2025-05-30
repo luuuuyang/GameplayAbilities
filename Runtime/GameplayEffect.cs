@@ -1296,7 +1296,14 @@ namespace GameplayAbilities
 		{
 			if (dataTag.IsValid())
 			{
-				SetByCallerTagMagnitudes.TryAdd(dataTag, magnitude);
+				if (SetByCallerTagMagnitudes.ContainsKey(dataTag))
+				{
+					SetByCallerTagMagnitudes[dataTag] = magnitude;
+				}
+				else
+				{
+					SetByCallerTagMagnitudes.TryAdd(dataTag, magnitude);
+				}
 			}
 		}
 
