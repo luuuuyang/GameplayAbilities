@@ -486,6 +486,11 @@ namespace GameplayAbilities
 
         public bool SetTagCount(in GameplayTag tag, int newCount)
         {
+            if (!tag.IsValid())
+            {
+                return false;
+            }
+
             int existingCount = ExplicitTagCountMap.GetValueOrDefault(tag);
 
             int countDelta = newCount - existingCount;
@@ -581,6 +586,12 @@ namespace GameplayAbilities
 
         private bool UpdateTagMap_Internal(in GameplayTag tag, int countDelta)
         {
+            if (!tag.IsValid())
+            {
+                Debug.LogWarning($"GameplayTagCountContainer attempted to update tag map with an invalid Tag (None)!");
+                return false;
+            }
+
             if (!UpdateExplicitTags(tag, countDelta, false))
             {
                 return false;

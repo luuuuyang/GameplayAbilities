@@ -410,12 +410,17 @@ namespace GameplayAbilities
 			return activeEffect?.EventSet.OnInhibitionChanged;
 		}
 
-		public void BlockAbilitiesWithTags(GameplayTagContainer tags)
+		public bool AreAbilityTagsBlocked(in GameplayTagContainer tags)
+		{
+			return tags.HasAny(BlockedAbilityTags.ExplicitGameplayTags);
+		}
+
+		public void BlockAbilitiesWithTags(in GameplayTagContainer tags)
 		{
 			BlockedAbilityTags.UpdateTagCount(tags, 1);
 		}
 
-		public void UnblockAbilitiesWithTags(GameplayTagContainer tags)
+		public void UnblockAbilitiesWithTags(in GameplayTagContainer tags)
 		{
 			BlockedAbilityTags.UpdateTagCount(tags, -1);
 		}

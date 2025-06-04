@@ -944,7 +944,22 @@ namespace GameplayAbilities
 		public GameplayEffectAttributeCaptureSpecContainer CapturedRelevantAttributes = new();
 		public List<GameplayEffectSpecHandle> TargetEffectSpecs = new();
 		public float Duration;
-		public float Period;
+		public float Period
+		{
+			get
+			{
+				if (Def != null && Def.DurationPolicy == GameplayEffectDurationType.Instant)
+				{
+					return GameplayEffectConstants.NoPeriod;
+				}
+
+				return Period;
+			}
+			private set
+			{
+				Period = value;
+			}
+		}
 		public TagContainerAggregator CapturedSourceTags = new();
 		public TagContainerAggregator CapturedTargetTags = new();
 		public GameplayTagContainer DynamicGrantedTags = new();
@@ -1198,6 +1213,7 @@ namespace GameplayAbilities
 			return null;
 		}
 
+		[Obsolete("Versions using factorInStackCount are deprecated, please use GetModifierMagnitude(int modifierIdx) instead.")]
 		public float GetModifierMagnitude(int modifierIdx, bool factorInStackCount)
 		{
 			Debug.Assert(Modifiers.IsValidIndex(modifierIdx) && Def.Modifiers.IsValidIndex(modifierIdx));
@@ -1206,6 +1222,21 @@ namespace GameplayAbilities
 
 			float modMagnitude = singleEvaluatedMagnitude;
 			if (factorInStackCount)
+			{
+				modMagnitude = GameplayEffectUtilities.ComputeStackedModifierMagnitude(singleEvaluatedMagnitude, StackCount, Def.Modifiers[modifierIdx].ModifierOp);
+			}
+
+			return modMagnitude;
+		}
+
+		public float GetModifierMagnitude(int modifierIdx)
+		{
+			Debug.Assert(Modifiers.IsValidIndex(modifierIdx) && Def.Modifiers.IsValidIndex(modifierIdx));
+
+			float singleEvaluatedMagnitude = Modifiers[modifierIdx].EvaluatedMagnitude;
+
+			float modMagnitude = singleEvaluatedMagnitude;
+			if (Def.FactorInStackCount)
 			{
 				modMagnitude = GameplayEffectUtilities.ComputeStackedModifierMagnitude(singleEvaluatedMagnitude, StackCount, Def.Modifiers[modifierIdx].ModifierOp);
 			}
@@ -3124,6 +3155,10 @@ namespace GameplayAbilities
 		[FoldoutGroup("Stacking")]
 		[HideIf("StackingType", GameplayEffectStackingType.None)]
 		public GameplayEffectStackingExpirationPolicy StackExpirationPolicy;
+
+		[FoldoutGroup("Stacking")]
+		[HideIf("StackingType", GameplayEffectStackingType.None)]
+		public bool FactorInStackCount;
 
 		[FoldoutGroup("Stacking")]
 		[HideIf("StackingType", GameplayEffectStackingType.None)]

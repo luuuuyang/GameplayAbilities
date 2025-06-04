@@ -206,7 +206,7 @@ namespace GameplayAbilities
 				missing = true;
 			}
 
-			CheckForBlocked(abilitySystemComponent.GetBlockedAbilityTags(), AssetTags);
+			CheckForBlocked(AssetTags, abilitySystemComponent.GetBlockedAbilityTags());
 			CheckForBlocked(abilitySystemComponent.GetOwnedGameplayTags(), ActivationBlockedTags);
 			if (sourceTags is not null)
 			{
@@ -225,6 +225,16 @@ namespace GameplayAbilities
 			if (targetTags is not null)
 			{
 				CheckForRequired(targetTags, TargetRequiredTags);
+			}
+
+			if (!blocked && !missing)
+			{
+				blocked = abilitySystemComponent.AreAbilityTagsBlocked(AssetTags);
+				if (blocked && optionalRelevantTags is not null)
+				{
+					GameplayTag blockedTag = AbilitySystemGlobals.Instance.ActivateFailTagsBlockedTag;
+					optionalRelevantTags.AddTag(blockedTag);
+				}
 			}
 
 			return !blocked && !missing;
@@ -543,7 +553,7 @@ namespace GameplayAbilities
 				ApplyGameplayEffectToOwner(handle, actorInfo, cooldownGE, GetAbilityLevel(handle, actorInfo));
 			}
 		}
-		
+
 		protected virtual void EndAbility()
 		{
 			Debug.Assert(CurrentActorInfo != null);
