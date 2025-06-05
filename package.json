@@ -3,7 +3,7 @@
   "version": "1.0.0-exp",
   "displayName": "Gameplay Abilities",
   "description": "Adds GameplayEffect and GameplayAbility classes to handle complicated gameplay interactions.",
-  "unity": "2021.2",
+  "unity": "2021.3",
   "documentationUrl": "",
   "changelogUrl": "",
   "licensesUrl": "",
