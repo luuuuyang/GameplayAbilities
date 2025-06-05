@@ -953,13 +953,14 @@ namespace GameplayAbilities
 					return GameplayEffectConstants.NoPeriod;
 				}
 
-				return Period;
+				return period;
 			}
 			private set
 			{
-				Period = value;
+				period = value;
 			}
 		}
+		private float period;
 		public TagContainerAggregator CapturedSourceTags = new();
 		public TagContainerAggregator CapturedTargetTags = new();
 		public GameplayTagContainer DynamicGrantedTags = new();
