@@ -591,6 +591,11 @@ namespace GameplayAbilities
 			return GameplayTagCountContainer.GetTagCount(tagToCheck);
 		}
 
+		public int GetGameplayTagCount(GameplayTag tagToCheck)
+		{
+			return GetTagCount(tagToCheck);
+		}
+
 		#endregion
 
 		public void CaptureAttributeForGameplayEffect(GameplayEffectAttributeCaptureSpec captureSpec)

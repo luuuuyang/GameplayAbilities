@@ -596,7 +596,7 @@ namespace GameplayAbilities
             {
                 return false;
             }
-
+ 
             List<DeferredTagChangeDelegate> deferredTagChangeDelegates = new();
             bool significantChange = GatherTagChangeDelegates(tag, countDelta, deferredTagChangeDelegates);
             foreach (DeferredTagChangeDelegate @delegate in deferredTagChangeDelegates)
