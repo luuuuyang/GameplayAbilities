@@ -987,10 +987,10 @@ namespace GameplayAbilities
 			ActiveGameplayEffects.SetAttributeBaseValue(attribute, newValue);
 		}
 
-		public void SetNumericAttribute_Internal(in GameplayAttribute attribute, float newValue)
+		public void SetNumericAttribute_Internal(in GameplayAttribute attribute, ref float newValue)
 		{
 			AttributeSet attributeSet = GetAttributeSubobjectChecked(attribute.GetAttributeSetClass());
-			attribute.SetNumericValueChecked(newValue, attributeSet);
+			attribute.SetNumericValueChecked(ref newValue, attributeSet);
 		}
 
 		public GameplayTagContainer GetGameplayEffectSourceTagsFromHandle(ActiveGameplayEffectHandle handle)

@@ -2411,7 +2411,7 @@ namespace GameplayAbilities
 		{
 			float oldValue = Owner.GetNumericAttribute(attribute);
 			Debug.Log($"InternalUpdateNumericAttribute {attribute.AttributeName} OldValue = {oldValue} newValue = {newValue}.");
-			Owner.SetNumericAttribute_Internal(attribute, newValue);
+			Owner.SetNumericAttribute_Internal(attribute, ref newValue);
 
 			if (!fromRecursiveCall)
 			{

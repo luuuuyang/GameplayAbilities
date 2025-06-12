@@ -165,7 +165,7 @@ namespace GameplayAbilities
 			return GetNumericValue(dest);
 		}
 
-		public void SetNumericValueChecked(float newValue, AttributeSet dest)
+		public void SetNumericValueChecked(ref float newValue, AttributeSet dest)
 		{
 			Debug.Assert(dest != null);
 
