@@ -65,6 +65,8 @@ namespace GameplayAbilities.Editor
             {
                 PopulateAvailableBackingData();
             }
+
+            SetCurrentBackingData(GetCurrentBackingData());
         }
 
         protected override void DrawPropertyLayout(GUIContent label)
@@ -80,7 +82,7 @@ namespace GameplayAbilities.Editor
             if (isExecutionDefAttribute && availableBackingData.Count > 0)
             {
                 DrawBackingDataDropdown();
-                EditorGUILayout.Space(5);
+                // EditorGUILayout.Space(5);
             }
 
             // Draw other properties (excluding the hidden ones when in execution context)

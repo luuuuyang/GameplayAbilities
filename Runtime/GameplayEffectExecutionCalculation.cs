@@ -36,14 +36,14 @@ namespace GameplayAbilities
                 Aggregator scopedAggregator;
                 if (curScopedMod.AggregatorType == GameplayEffectScopedModifierAggregatorType.CapturedAttributeBacked)
                 {
-                    if (ScopedModifierAggregators.TryGetValue(curScopedMod.CaptureAttribute, out scopedAggregator))
+                    if (!ScopedModifierAggregators.TryGetValue(curScopedMod.CaptureAttribute, out scopedAggregator))
                     {
                         GameplayEffectAttributeCaptureSpec captureSpec = owningSpec.CapturedRelevantAttributes.FindCaptureSpecByDefinition(curScopedMod.CaptureAttribute, true);
 
-                        Aggregator snapshotAggregator = null;
+                        Aggregator snapshotAggregator = new();
                         if (captureSpec != null && captureSpec.AttemptGetAttributeAggregatorSnapshot(ref snapshotAggregator))
                         {
-                            ScopedModifierAggregators.Add(curScopedMod.CaptureAttribute, scopedAggregator);
+                            ScopedModifierAggregators.Add(curScopedMod.CaptureAttribute, snapshotAggregator);
                             scopedAggregator = snapshotAggregator;
                         }
                     }

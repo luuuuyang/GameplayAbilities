@@ -432,7 +432,7 @@ namespace GameplayAbilities
 				if (modDef.Attribute == attribute)
 				{
 					AggregatorModChannel modChannel = ModChannels.FindOrAddModChannel(modDef.EvaluationChannelSettings.EvaluationChannel);
-					modChannel.AddMod(spec.GetModifierMagnitude(modIdx, true), modDef.ModifierOp, modDef.SourceTags, modDef.TargetTags, handle);
+					modChannel.AddMod(spec.GetModifierMagnitude(modIdx), modDef.ModifierOp, modDef.SourceTags, modDef.TargetTags, handle);
 				}
 			}
 
