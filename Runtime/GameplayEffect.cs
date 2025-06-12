@@ -3177,7 +3177,7 @@ namespace GameplayAbilities
 
 		[FoldoutGroup("Stacking")]
 		[HideIf("StackingType", GameplayEffectStackingType.None)]
-		public bool FactorInStackCount;
+		public bool FactorInStackCount = true;
 
 		[FoldoutGroup("Stacking")]
 		[HideIf("StackingType", GameplayEffectStackingType.None)]
