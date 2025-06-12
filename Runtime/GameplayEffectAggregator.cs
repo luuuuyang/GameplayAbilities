@@ -224,7 +224,7 @@ namespace GameplayAbilities
 
 	public class AggregatorModChannelContainer
 	{
-		public Dictionary<GameplayModEvaluationChannel, AggregatorModChannel> ModChannelsMap = new();
+		public SortedDictionary<GameplayModEvaluationChannel, AggregatorModChannel> ModChannelsMap = new();
 
 		public AggregatorModChannel FindOrAddModChannel(GameplayModEvaluationChannel channel)
 		{
