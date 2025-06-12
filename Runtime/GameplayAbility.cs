@@ -128,29 +128,32 @@ namespace GameplayAbilities
 			GameplayAbilitySpec spec = abilitySystemComponent.FindAbilitySpecFromHandle(handle);
 			if (spec == null)
 			{
-				Debug.LogWarning($"CanActivateAbility {this} failed, called with invalid Handle");
+				Debug.LogWarning($"CanActivateAbility {name} failed, called with invalid Handle");
 				return false;
 			}
 
 			if (abilitySystemComponent.UserAbilityActivationInhibited)
 			{
-				Debug.Log($"{actorInfo.OwnerActor}: {spec.Ability} could not be activated due to UserAbilityActivationInhibited returning true");
+				Debug.Log($"{actorInfo.OwnerActor}: {spec.Ability.name} could not be activated due to UserAbilityActivationInhibited returning true");
 				return false;
 			}
 
 			AbilitySystemGlobals abilitySystemGlobals = AbilitySystemGlobals.Instance;
 			if (abilitySystemGlobals.ShouldIgnoreCooldowns && !CheckCooldown(handle, actorInfo, optionalRelevantTags))
 			{
+				Debug.LogWarning($"{actorInfo.OwnerActor}: {spec.Ability.name} could not be activated due to Cooldown ({(optionalRelevantTags != null ? optionalRelevantTags : "Unknown")})");
 				return false;
 			}
 
 			if (abilitySystemGlobals.ShouldIgnoreCosts && !CheckCost(handle, actorInfo, optionalRelevantTags))
 			{
+				Debug.LogWarning($"{actorInfo.OwnerActor}: {spec.Ability.name} could not be activated due to Cost ({(optionalRelevantTags != null ? optionalRelevantTags : "Unknown")})");
 				return false;
 			}
 
 			if (!DoesAbilitySatisfyTagRequirements(abilitySystemComponent, sourceTags, targetTags, optionalRelevantTags))
 			{
+				Debug.LogWarning($"{actorInfo.OwnerActor}: {spec.Ability.name} could not be activated due to Blocking Tags or Missing Required Tags ({(optionalRelevantTags != null ? optionalRelevantTags : "Unknown")})");
 				return false;
 			}
 
