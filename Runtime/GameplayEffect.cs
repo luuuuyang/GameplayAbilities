@@ -964,6 +964,7 @@ namespace GameplayAbilities
 		public TagContainerAggregator CapturedSourceTags = new();
 		public TagContainerAggregator CapturedTargetTags = new();
 		public GameplayTagContainer DynamicGrantedTags = new();
+		[Obsolete("This member will be made private. Please use AddDynamicAssetTag, AppendDynamicAssetTags, or GetDynamicAssetTags as appropriate. Note that dynamic asset tag removal will no longer be supported.")]
 		public GameplayTagContainer DynamicAssetTags = new();
 		public List<ModifierSpec> Modifiers = new();
 		public int StackCount;
@@ -1129,7 +1130,7 @@ namespace GameplayAbilities
 
 		public void GetAllAssetTags(GameplayTagContainer container)
 		{
-			container.AppendTags(DynamicAssetTags);
+			container.AppendTags(GetDynamicAssetTags());
 			if (Def != null)
 			{
 				container.AppendTags(Def.AssetTags);
@@ -1283,6 +1284,23 @@ namespace GameplayAbilities
 			};
 
 			return durationAgg.EvaluateWithBase(Duration, @params);
+		}
+
+		public void AddDynamicAssetTag(in GameplayTag tagToAdd)
+		{
+			DynamicAssetTags.AddTag(tagToAdd);
+			CapturedSourceTags.SpecTags.AddTag(tagToAdd);
+		}
+
+		public void AppendDynamicAssetTags(in GameplayTagContainer tagsToAppend)
+		{
+			DynamicAssetTags.AppendTags(tagsToAppend);
+			CapturedSourceTags.SpecTags.AppendTags(tagsToAppend);
+		}
+
+		public GameplayTagContainer GetDynamicAssetTags()
+		{
+			return DynamicAssetTags;
 		}
 
 		public void CaptureAttributeDataFromTarget(AbilitySystemComponent targetAbilitySystemComponent)
@@ -2438,22 +2456,22 @@ namespace GameplayAbilities
 
 			if (effect.Spec.Period <= GameplayEffectConstants.NoPeriod)
 			{
-				for (int i = 0; i < effect.Spec.Modifiers.Count; i++)
+				for (int modIdx = 0; modIdx < effect.Spec.Modifiers.Count; modIdx++)
 				{
-					if (effect.Spec.Def.Modifiers.IsValidIndex(i) == false)
+					if (effect.Spec.Def.Modifiers.IsValidIndex(modIdx) == false)
 					{
-						Debug.LogError($"Spec Modifiers[{i}] (max {effect.Spec.Def.Modifiers.Count}) is invalid with Def ({effect.Spec.Def}) modifiers (max {effect.Spec.Def.Modifiers.Count})");
+						Debug.LogError($"Spec Modifiers[{modIdx}] (max {effect.Spec.Def.Modifiers.Count}) is invalid with Def ({effect.Spec.Def}) modifiers (max {effect.Spec.Def.Modifiers.Count})");
 						continue;
 					}
 
-					GameplayModifierInfo modInfo = effect.Spec.Def.Modifiers[i];
+					GameplayModifierInfo modInfo = effect.Spec.Def.Modifiers[modIdx];
 
 					if (!Owner || !Owner.HasAttributeSetForAttribute(modInfo.Attribute))
 					{
 						continue;
 					}
 
-					float evaluatedMagnitude = effect.Spec.GetModifierMagnitude(i, true);
+					float evaluatedMagnitude = effect.Spec.GetModifierMagnitude(modIdx);
 
 					Aggregator aggregator = FindOrCreateAttributeAggregator(modInfo.Attribute);
 					aggregator?.AddAggregatorMod(evaluatedMagnitude, modInfo.ModifierOp, modInfo.EvaluationChannelSettings.EvaluationChannel, modInfo.SourceTags, modInfo.TargetTags, effect.Handle);
@@ -2499,6 +2517,7 @@ namespace GameplayAbilities
 						}
 					}
 				}
+
 			}
 
 			Owner.UpdateTagMap(effect.Spec.Def.GrantedTags, -1);
@@ -2506,7 +2525,6 @@ namespace GameplayAbilities
 
 			Owner.UnblockAbilitiesWithTags(effect.Spec.Def.BlockedAbilityTags);
 		}
-
 
 		public Aggregator FindOrCreateAttributeAggregator(GameplayAttribute attribute)
 		{
