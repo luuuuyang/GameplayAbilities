@@ -541,7 +541,7 @@ namespace GameplayAbilities
 		public GameplayModOp ModifierOp = GameplayModOp.Additive;
 		public GameplayEffectModifierMagnitude ModifierMagnitude = new();
 		[ShowIf("@AbilitySystemGlobals.Instance.ShouldAllowGameplayModEvaluationChannels()")]
-		public GameplayModEvaluationChannelSettings EvaluationChannelSettings;
+		public GameplayModEvaluationChannelSettings EvaluationChannelSettings = new();
 		// used for Execution or MMC
 		public GameplayTagRequirements SourceTags = new();
 		public GameplayTagRequirements TargetTags = new();
