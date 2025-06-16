@@ -3356,7 +3356,7 @@ namespace GameplayAbilities
 
 		public T AddComponent<T>() where T : GameplayEffectComponent, new()
 		{
-			T component = CreateInstance<T>();
+			T component = GameplayEffectComponent.CreateInstance(typeof(T), this) as T;
 			GEComponents.Add(component);
 			return component;
 		}
@@ -3366,7 +3366,7 @@ namespace GameplayAbilities
 			T component = GetComponent<T>();
 			if (component == null)
 			{
-				component = CreateInstance<T>();
+				component = GameplayEffectComponent.CreateInstance(typeof(T), this) as T;
 				GEComponents.Add(component);
 			}
 			return component;
