@@ -12,6 +12,7 @@ namespace GameplayAbilities
 		[SerializeField]
 		private InheritedTagContainer InheritableGrantedTagsContainer;
 
+#if UNITY_EDITOR
 		protected void OnValidate()
 		{
 			SetAndApplyTargetTagChanges(InheritableGrantedTagsContainer);
@@ -19,6 +20,7 @@ namespace GameplayAbilities
 			GameplayEffect owner = Owner;
 			owner.OnGameplayEffectChanged();
 		}
+#endif
 
 		public override void OnGameplayEffectChanged()
 		{
