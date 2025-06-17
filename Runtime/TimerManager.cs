@@ -119,6 +119,7 @@ namespace GameplayAbilities
 		public static TimerManager Instance { get; private set; }
 
 		public bool autoTick = true;
+		public bool dontDestroyOnLoad = true;
 
 		private SparseArray<TimerData> Timers = new();
 		private PriorityQueue<TimerHandle, double> ActiveTimerHeap = new();
@@ -191,7 +192,10 @@ namespace GameplayAbilities
             if (Instance == null)
             {
                 Instance = this;
-                DontDestroyOnLoad(gameObject);
+				if (dontDestroyOnLoad)
+                {
+                    DontDestroyOnLoad(gameObject);
+                }
             }
             else if (Instance != this)
             {
