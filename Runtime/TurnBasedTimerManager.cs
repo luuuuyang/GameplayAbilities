@@ -9,24 +9,6 @@ namespace GameplayAbilities
 
     using TimerDynamicDelegate = UnityAction;
 
-    public static class TimerHandleGenerator
-    {
-        private static ulong LastAssignedSerialNumber = 0;
-
-        public static TimerHandle GenerateHandle(int index)
-        {
-            ulong newSerialNumber = ++LastAssignedSerialNumber;
-            if (newSerialNumber == TimerHandle.MaxSerialNumber)
-            {
-                newSerialNumber = 1;
-            }
-
-            TimerHandle result = new();
-            result.SetIndexAndSerialNumber(index, newSerialNumber);
-            return result;
-        }
-    }
-
     public class TurnBasedTimerData
     {
         public bool Loop;
@@ -61,7 +43,7 @@ namespace GameplayAbilities
         [SerializeField] private bool dontDestroyOnLoad = true;
 
         private SparseArray<TurnBasedTimerData> Timers = new();
-        private PriorityQueue<TimerHandle, int> ActiveTimerHeap = new();
+        private PriorityQueue<TimerHandle, TimerPriority> ActiveTimerHeap = new();
         private HashSet<TimerHandle> PausedTimerSet = new();
         private Dictionary<object, HashSet<TimerHandle>> ObjectToTimers = new();
 
@@ -216,7 +198,8 @@ namespace GameplayAbilities
 
             timerToUnPause.ExpireTime += InternalTime;
             timerToUnPause.Status = TimerStatus.Active;
-            ActiveTimerHeap.Enqueue(handle, timerToUnPause.ExpireTime);
+            TimerPriority priority = new(timerToUnPause.ExpireTime, handle.GetSerialNumber());
+            ActiveTimerHeap.Enqueue(handle, priority);
 
             PausedTimerSet.Remove(handle);
         }
@@ -258,7 +241,8 @@ namespace GameplayAbilities
                         {
                             top.ExpireTime += callCount * top.Rate;
                             top.Status = TimerStatus.Active;
-                            ActiveTimerHeap.Enqueue(CurrentlyExecutingTimer, top.ExpireTime);
+                            TimerPriority priority = new(top.ExpireTime, CurrentlyExecutingTimer.GetSerialNumber());
+                            ActiveTimerHeap.Enqueue(CurrentlyExecutingTimer, priority);
                         }
                         else
                         {
@@ -329,7 +313,8 @@ namespace GameplayAbilities
                 };
 
                 TimerHandle newHandle = AddTimer(newTimerData);
-                ActiveTimerHeap.Enqueue(newHandle, newTimerData.ExpireTime);
+                TimerPriority priority = new(newTimerData.ExpireTime, newHandle.GetSerialNumber());
+                ActiveTimerHeap.Enqueue(newHandle, priority);
                 handle = newHandle;
             }
             else

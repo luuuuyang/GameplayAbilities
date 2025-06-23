@@ -74,4 +74,22 @@ namespace GameplayAbilities
             return Handle == other.Handle;
         }
     }
+
+    public static class TimerHandleGenerator
+    {
+        private static ulong LastAssignedSerialNumber = 0;
+
+        public static TimerHandle GenerateHandle(int index)
+        {
+            ulong newSerialNumber = ++LastAssignedSerialNumber;
+            if (newSerialNumber == TimerHandle.MaxSerialNumber)
+            {
+                newSerialNumber = 1;
+            }
+
+            TimerHandle result = new();
+            result.SetIndexAndSerialNumber(index, newSerialNumber);
+            return result;
+        }
+    }
 }

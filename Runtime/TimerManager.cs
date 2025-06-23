@@ -115,13 +115,36 @@ namespace GameplayAbilities
 		}
 	};
 
+	public struct TimerPriority : IComparable<TimerPriority>
+	{
+		public double ExpireTime;
+		public ulong Handle;
+
+		public TimerPriority(double expireTime, ulong handle)
+		{
+			ExpireTime = expireTime;
+			Handle = handle;
+		}
+
+		public int CompareTo(TimerPriority other)
+		{
+			int order = ExpireTime.CompareTo(other.ExpireTime);
+			if (order == 0)
+			{
+				order = other.Handle.CompareTo(Handle);
+			}
+
+			return order;
+		}
+	}
+
 	public class TimerManager : MonoBehaviour, ITimerManager
 	{
 		public static TimerManager Instance { get; private set; }
 
 		[SerializeField] private bool dontDestroyOnLoad = true;
 		private SparseArray<TimerData> Timers = new();
-		private PriorityQueue<TimerHandle, double> ActiveTimerHeap = new();
+		private PriorityQueue<TimerHandle, TimerPriority> ActiveTimerHeap = new();
 		private HashSet<TimerHandle> PausedTimerSet = new();
 		private HashSet<TimerHandle> PendingTimerSet = new();
 		private Dictionary<object, HashSet<TimerHandle>> ObjectToTimers = new();
@@ -276,7 +299,8 @@ namespace GameplayAbilities
 			{
 				timerToUnPause.ExpireTime += InternalTime;
 				timerToUnPause.Status = TimerStatus.Active;
-				ActiveTimerHeap.Enqueue(handle, timerToUnPause.ExpireTime);
+				TimerPriority priority = new(timerToUnPause.ExpireTime, handle.GetSerialNumber());
+				ActiveTimerHeap.Enqueue(handle, priority);
 			}
 			else
 			{
@@ -382,7 +406,8 @@ namespace GameplayAbilities
 						{
 							top.ExpireTime += callCount * top.Rate;
 							top.Status = TimerStatus.Active;
-							ActiveTimerHeap.Enqueue(CurrentlyExecutingTimer, top.ExpireTime);
+							TimerPriority priority = new(top.ExpireTime, CurrentlyExecutingTimer.GetSerialNumber());
+							ActiveTimerHeap.Enqueue(CurrentlyExecutingTimer, priority);
 						}
 						else
 						{
@@ -408,7 +433,8 @@ namespace GameplayAbilities
 
 					timerToActivate.ExpireTime += InternalTime;
 					timerToActivate.Status = TimerStatus.Active;
-					ActiveTimerHeap.Enqueue(handle, timerToActivate.ExpireTime);
+					TimerPriority priority = new(timerToActivate.ExpireTime, handle.GetSerialNumber());
+					ActiveTimerHeap.Enqueue(handle, priority);
 				}
 				PendingTimerSet.Clear();
 			}
@@ -488,7 +514,8 @@ namespace GameplayAbilities
 					newTimerData.ExpireTime = InternalTime + firstDelay;
 					newTimerData.Status = TimerStatus.Active;
 					newTimerHandle = AddTimer(newTimerData);
-					ActiveTimerHeap.Enqueue(newTimerHandle, newTimerData.ExpireTime);
+					TimerPriority priority = new(newTimerData.ExpireTime, newTimerHandle.GetSerialNumber());
+					ActiveTimerHeap.Enqueue(newTimerHandle, priority);
 				}
 				else
 				{
@@ -524,7 +551,8 @@ namespace GameplayAbilities
 			{
 				newTimerData.Status = TimerStatus.Active;
 				newTimerHandle = AddTimer(newTimerData);
-				ActiveTimerHeap.Enqueue(newTimerHandle, newTimerData.ExpireTime);
+				TimerPriority priority = new(newTimerData.ExpireTime, newTimerHandle.GetSerialNumber());
+				ActiveTimerHeap.Enqueue(newTimerHandle, priority);
 			}
 			else
 			{
@@ -699,7 +727,7 @@ namespace GameplayAbilities
 
 			Debug.Log($"{ActiveTimerHeap.Count} Active Timers (including expired)");
 			int expiredActiveTimerCount = 0;
-			foreach ((TimerHandle handle, double _) in ActiveTimerHeap.UnorderedItems)
+			foreach ((TimerHandle handle, TimerPriority _) in ActiveTimerHeap.UnorderedItems)
 			{
 				TimerData timer = GetTimer(handle);
 				if (timer.Status == TimerStatus.ActivePendingRemoval)
