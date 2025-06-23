@@ -79,6 +79,11 @@ namespace GameplayAbilities
 			return GameplayAbilitiesDeveloperSettings.GetOrCreateSettings().UseTurnBasedTimerManager;
 		}
 
+		public bool IsGameplayEffectTimingTypeValid(GameplayEffectTimingType timingType)
+		{
+			return timingType == GameplayEffectTimingType.RealTime || (ShouldUseTurnBasedTimerManager() && timingType == GameplayEffectTimingType.TurnBased);
+		}
+
 		public virtual void GlobalPreGameplayEffectSpecApply(GameplayEffectSpec spec, AbilitySystemComponent abilitySystemComponent)
 		{
 

@@ -3080,16 +3080,29 @@ namespace GameplayAbilities
 		public ScalableFloat Period = new();
 
 		[FoldoutGroup("Duration")]
-		[ShowIf("@AbilitySystemGlobals.Instance.ShouldUseTurnBasedTimerManager() && DurationPolicy != GameplayEffectDurationType.Instant", true)]
-		public GameplayEffectTimingType TimingType = GameplayEffectTimingType.RealTime;
-
-		[FoldoutGroup("Duration")]
 		[ShowIf("@DurationPolicy != GameplayEffectDurationType.Instant && Period.Value != 0")]
 		public bool ExecutePeriodicEffectOnApplication = true;
 
 		[FoldoutGroup("Duration")]
 		[ShowIf("@DurationPolicy != GameplayEffectDurationType.Instant && Period.Value != 0")]
 		public GameplayEffectPeriodInhibitionRemovedPolicy PeriodInhibitionPolicy;
+
+		[FoldoutGroup("Duration")]
+		[ShowIf("@AbilitySystemGlobals.Instance.ShouldUseTurnBasedTimerManager() && DurationPolicy != GameplayEffectDurationType.Instant", true)]
+		[SerializeField]
+		private GameplayEffectTimingType timingType = GameplayEffectTimingType.RealTime;
+
+		public GameplayEffectTimingType TimingType
+		{
+			get
+			{
+				if (AbilitySystemGlobals.Instance.IsGameplayEffectTimingTypeValid(timingType))
+				{
+					return timingType;
+				}
+				return GameplayEffectTimingType.RealTime;
+			}
+		}
 
 		[FoldoutGroup("GameplayEffect")]
 		[LabelText("Components")]
