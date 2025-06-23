@@ -220,7 +220,7 @@ namespace GameplayAbilities
                     CurrentlyExecutingTimer = ActiveTimerHeap.Dequeue();
                     top.Status = TimerStatus.Executing;
 
-                    int callCount = top.Loop ? (int)((InternalTime - top.ExpireTime) / top.Rate) + 1 : 1;
+                    int callCount = top.Loop ? ((InternalTime - top.ExpireTime) / top.Rate) + 1 : 1;
 
                     for (int callIdx = 0; callIdx < callCount; callIdx++)
                     {
@@ -301,7 +301,9 @@ namespace GameplayAbilities
             }
 
             if (rate > 0)
-            {
+            {           
+                firstDelay = firstDelay >= 0 ? firstDelay : rate;
+
                 TurnBasedTimerData newTimerData = new()
                 {
                     TimerDelegate = @delegate,

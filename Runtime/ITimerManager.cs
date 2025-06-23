@@ -4,7 +4,7 @@ namespace GameplayAbilities
 {
     public interface ITimerManager
     {
-        void SetTimer(ref TimerHandle handle, in TimerDelegate @delegate, float rate, bool loop, float firstDelay = default);
+        void SetTimer(ref TimerHandle handle, in TimerDelegate @delegate, float rate, bool loop, float firstDelay = -1);
         void ClearTimer(TimerHandle handle);
         void PauseTimer(TimerHandle handle);
         void UnPauseTimer(TimerHandle handle);
