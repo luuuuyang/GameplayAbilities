@@ -332,11 +332,14 @@ namespace GameplayAbilities
         protected bool RequiresPassedInTags;
 
 #if UNITY_EDITOR
+
+        // Any attribute in this list will not show up as a valid option for scoped modifiers; Used to allow attribute capture for internal calculation while preventing modification
         [FoldoutGroup("Attributes")]
         [SerializeField]
         [PropertyOrder(1)]
         protected List<GameplayEffectAttributeCaptureDefinition> InvalidScopedModifierAttributes;
 
+        // Any tag in this container will show up as a valid "temporary variable" for scoped modifiers; Used to allow for data-driven variable support that doesn't rely on scoped modifiers
         [FoldoutGroup("Non Attribute Calculation")]
         [SerializeField]
         protected GameplayTagContainer ValidTransientAggregatorIdentifiers;

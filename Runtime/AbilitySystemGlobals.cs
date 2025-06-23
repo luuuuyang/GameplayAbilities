@@ -1,5 +1,4 @@
 using UnityEngine;
-using System.Collections.Generic;
 using GameplayTags;
 
 namespace GameplayAbilities
@@ -12,13 +11,11 @@ namespace GameplayAbilities
 			{
 				if (instance == null)
 				{
-					//ensure that only one thread can execute
 					lock (typeof(AbilitySystemGlobals))
 					{
 						if (instance == null)
 						{
 							instance = new();
-							// TODO
 						}
 					}
 				}
@@ -28,8 +25,8 @@ namespace GameplayAbilities
 
 		private static AbilitySystemGlobals instance;
 
-		public bool IgnoreAbilitySystemCooldowns;
-		public bool IgnoreAbilitySystemCosts;
+		public bool IgnoreAbilitySystemCooldowns = true;
+		public bool IgnoreAbilitySystemCosts = true;
 
 		public bool ShouldIgnoreCooldowns => IgnoreAbilitySystemCooldowns;
 		public bool ShouldIgnoreCosts => IgnoreAbilitySystemCosts;
@@ -75,6 +72,11 @@ namespace GameplayAbilities
 			GameplayAbilitiesDeveloperSettings developerSettings = GameplayAbilitiesDeveloperSettings.GetOrCreateSettings();
 			Debug.Assert(index >= 0 && index < developerSettings.GameplayModEvaluationChannelAliases.Length);
 			return developerSettings.GameplayModEvaluationChannelAliases[index];
+		}
+
+		public bool ShouldUseTurnBasedTimerManager()
+		{
+			return GameplayAbilitiesDeveloperSettings.GetOrCreateSettings().UseTurnBasedTimerManager;
 		}
 
 		public virtual void GlobalPreGameplayEffectSpecApply(GameplayEffectSpec spec, AbilitySystemComponent abilitySystemComponent)

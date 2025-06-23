@@ -459,6 +459,7 @@ namespace GameplayAbilities
 				}
 
 				TimerManager.Instance.ClearAllTimersForObject(this);
+				TurnBasedTimerManager.Instance.ClearAllTimersForObject(this);
 
 				OnGameplayAbilityEnded?.Invoke(this);
 				OnGameplayAbilityEnded = null;

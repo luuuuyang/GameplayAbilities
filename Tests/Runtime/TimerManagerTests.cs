@@ -37,7 +37,7 @@ namespace GameplayAbilities.Tests
         public void Test_MissingTimers()
         {
             TimerManager timerManager = TimerManager.Instance;
-            TimerHandle handle = timerManager.GenerateHandle(123);
+            TimerHandle handle = TimerHandleGenerator.GenerateHandle(123);
 
             Assert.IsFalse(timerManager.TimerExists(handle), "TimerExists called with a invalid timer");
             Assert.IsFalse(timerManager.IsTimerActive(handle), "IsTimerActive called with a invalid timer");

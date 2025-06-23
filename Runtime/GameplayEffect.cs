@@ -616,7 +616,12 @@ namespace GameplayAbilities
 		Instant,
 		Infinite,
 		HasDuration,
-		/*HasTurn*/
+	}
+
+	public enum GameplayEffectTimingType
+	{
+		RealTime,
+		TurnBased,
 	}
 
 	public enum GameplayEffectStackingDurationPolicy
@@ -1865,6 +1870,8 @@ namespace GameplayAbilities
 				appliedEffectSpec.Duration = defCalcDuration;
 			}
 
+			ITimerManager timerManager = appliedEffectSpec.Def.TimingType == GameplayEffectTimingType.RealTime ? TimerManager.Instance : TurnBasedTimerManager.Instance;
+
 			float durationBaseValue = appliedEffectSpec.Duration;
 			if (durationBaseValue > 0)
 			{
@@ -1884,7 +1891,9 @@ namespace GameplayAbilities
 					{
 						Owner.CheckDurationExpired(appliedActiveGE.Handle);
 					};
-					TimerManager.Instance.SetTimer(ref appliedActiveGE.DurationHandle, @delegate, finalDuration, false);
+
+					timerManager.SetTimer(ref appliedActiveGE.DurationHandle, @delegate, finalDuration, false);
+
 					if (!appliedActiveGE.DurationHandle.IsValid())
 					{
 						Debug.LogWarning($"Invalid Duration Handle after attempting to set duration for GE {appliedActiveGE} @ {finalDuration}");
@@ -1905,7 +1914,7 @@ namespace GameplayAbilities
 					TimerManager.Instance.SetTimerForNextTick(@delegate);
 				}
 
-				TimerManager.Instance.SetTimer(ref appliedActiveGE.PeriodHandle, @delegate, appliedEffectSpec.Period, true);
+				timerManager.SetTimer(ref appliedActiveGE.PeriodHandle, @delegate, appliedEffectSpec.Period, true);
 			}
 
 			if (existingStackableGE != null)
@@ -2054,13 +2063,15 @@ namespace GameplayAbilities
 
 				InternalOnActiveGameplayEffectRemoved(effect, gameplayEffectRemovalInfo);
 
+				ITimerManager timerManager = effect.Spec.Def.TimingType == GameplayEffectTimingType.RealTime ? TimerManager.Instance : TurnBasedTimerManager.Instance;
+
 				if (effect.DurationHandle.IsValid())
 				{
-					TimerManager.Instance.ClearTimer(effect.DurationHandle);
+					timerManager.ClearTimer(effect.DurationHandle);
 				}
 				if (effect.PeriodHandle.IsValid())
 				{
-					TimerManager.Instance.ClearTimer(effect.PeriodHandle);
+					timerManager.ClearTimer(effect.PeriodHandle);
 				}
 
 				effect.Handle.RemoveFromGlobalMap();
@@ -2123,7 +2134,10 @@ namespace GameplayAbilities
 
 		public void RestartActiveGameplayEffectDuration(ActiveGameplayEffect activeGameplayEffect)
 		{
-			activeGameplayEffect.StartWorldTime = GetWorldTime();
+
+			activeGameplayEffect.StartWorldTime = activeGameplayEffect.Spec.Def.TimingType == GameplayEffectTimingType.RealTime ?
+													GetWorldTime() :
+													GetTurnBasedWorldTime();
 
 			OnDurationChange(activeGameplayEffect);
 		}
@@ -2491,7 +2505,9 @@ namespace GameplayAbilities
 						TimerManager.Instance.SetTimerForNextTick(timerDelegate);
 					}
 
-					TimerManager.Instance.SetTimer(ref effect.PeriodHandle, timerDelegate, effect.Spec.Period, true);
+					ITimerManager timerManager = effect.Spec.Def.TimingType == GameplayEffectTimingType.RealTime ? TimerManager.Instance : TurnBasedTimerManager.Instance;
+
+					timerManager.SetTimer(ref effect.PeriodHandle, timerDelegate, effect.Spec.Period, true);
 				}
 			}
 
@@ -2570,6 +2586,11 @@ namespace GameplayAbilities
 			return TimerManager.Instance.GetTimeSeconds();
 		}
 
+		public float GetTurnBasedWorldTime()
+		{
+			return TurnBasedTimerManager.Instance.GetTimeSeconds();
+		}
+
 		public void CheckDuration(ActiveGameplayEffectHandle handle)
 		{
 			for (int activeGEIdx = 0; activeGEIdx < GameplayEffects_Internal.Count; activeGEIdx++)
@@ -2582,8 +2603,9 @@ namespace GameplayAbilities
 						break;
 					}
 
+					GameplayEffectTimingType timingType = effect.Spec.Def.TimingType;
 					float duration = effect.Duration;
-					float currentTime = GetWorldTime();
+					float currentTime = timingType == GameplayEffectTimingType.RealTime ? GetWorldTime() : GetTurnBasedWorldTime();
 
 					int stacksToRemove = -2;
 					bool refreshStartTime = false;
@@ -2615,11 +2637,13 @@ namespace GameplayAbilities
 						refreshDurationTimer = true;
 					}
 
+					ITimerManager timerManager = timingType == GameplayEffectTimingType.RealTime ? TimerManager.Instance : TurnBasedTimerManager.Instance;
+
 					if (checkForFinalPeriodicExec)
 					{
-						if (effect.PeriodHandle.IsValid() && TimerManager.Instance.TimerExists(effect.PeriodHandle))
+						if (effect.PeriodHandle.IsValid() && timerManager.TimerExists(effect.PeriodHandle))
 						{
-							float periodTimeRemaining = TimerManager.Instance.GetTimerRemaining(effect.PeriodHandle);
+							float periodTimeRemaining = timerManager.GetTimerRemaining(effect.PeriodHandle);
 							if (periodTimeRemaining <= Mathf.Epsilon && !effect.IsInhibited)
 							{
 								InternalExecutePeriodicGameplayEffect(effect);
@@ -2630,7 +2654,7 @@ namespace GameplayAbilities
 								}
 							}
 
-							TimerManager.Instance.ClearTimer(effect.PeriodHandle);
+							timerManager.ClearTimer(effect.PeriodHandle);
 						}
 					}
 
@@ -2652,7 +2676,7 @@ namespace GameplayAbilities
 						};
 
 						float newTimerDuration = effect.StartWorldTime + duration - currentTime;
-						TimerManager.Instance.SetTimer(ref effect.DurationHandle, @delegate, newTimerDuration, false);
+						timerManager.SetTimer(ref effect.DurationHandle, @delegate, newTimerDuration, false);
 
 						if (effect.DurationHandle.IsValid() == false)
 						{
@@ -2704,6 +2728,7 @@ namespace GameplayAbilities
 		public List<float> GetActiveEffectsTimeRemaining(in GameplayEffectQuery query)
 		{
 			float currentTime = GetWorldTime();
+			float currentTurnTime = GetTurnBasedWorldTime();
 
 			List<float> returnList = new();
 
@@ -2714,7 +2739,10 @@ namespace GameplayAbilities
 					continue;
 				}
 
-				float elapsed = currentTime - effect.StartWorldTime;
+				float elapsed = effect.Spec.Def.TimingType == GameplayEffectTimingType.RealTime ?
+								currentTime - effect.StartWorldTime :
+								currentTurnTime - effect.StartWorldTime;
+
 				float duration = effect.Duration;
 
 				returnList.Add(duration - elapsed);
@@ -3052,6 +3080,10 @@ namespace GameplayAbilities
 		public ScalableFloat Period = new();
 
 		[FoldoutGroup("Duration")]
+		[ShowIf("@AbilitySystemGlobals.Instance.ShouldUseTurnBasedTimerManager() && DurationPolicy != GameplayEffectDurationType.Instant", true)]
+		public GameplayEffectTimingType TimingType = GameplayEffectTimingType.RealTime;
+
+		[FoldoutGroup("Duration")]
 		[ShowIf("@DurationPolicy != GameplayEffectDurationType.Instant && Period.Value != 0")]
 		public bool ExecutePeriodicEffectOnApplication = true;
 
@@ -3190,6 +3222,10 @@ namespace GameplayAbilities
 		[ShowIf("DenyOverflowApplication", true)]
 		public bool ClearStackOnOverflow;
 
+		// ------------------------------------------------------------
+		//	Cached Component Data - Do not modify these at runtime!
+		//	If you want to manipulate these, write your own GameplayEffectComponent
+
 		[HideInInspector]
 		public GameplayTagContainer CachedAssetTags = new();
 
@@ -3198,6 +3234,8 @@ namespace GameplayAbilities
 
 		[HideInInspector]
 		public GameplayTagContainer CachedBlockedAbilityTags = new();
+
+		// ------------------------------------------------------------
 
 		public GameplayTagContainer AssetTags => CachedAssetTags;
 

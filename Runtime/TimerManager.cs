@@ -8,6 +8,7 @@ namespace GameplayAbilities
 	using TimerFunction = Action;
 
 	using TimerDynamicDelegate = UnityAction;
+
 	public delegate void TimerDelegate();
 
 	public enum TimerStatus
@@ -114,13 +115,11 @@ namespace GameplayAbilities
 		}
 	};
 
-	public class TimerManager : MonoBehaviour
+	public class TimerManager : MonoBehaviour, ITimerManager
 	{
 		public static TimerManager Instance { get; private set; }
 
-		public bool autoTick = true;
-		public bool dontDestroyOnLoad = true;
-
+		[SerializeField] private bool dontDestroyOnLoad = true;
 		private SparseArray<TimerData> Timers = new();
 		private PriorityQueue<TimerHandle, double> ActiveTimerHeap = new();
 		private HashSet<TimerHandle> PausedTimerSet = new();
@@ -129,7 +128,6 @@ namespace GameplayAbilities
 		private float InternalTime;
 		private TimerHandle CurrentlyExecutingTimer;
 		private int LastTickedFrame;
-		private static ulong LastAssignedSerialNumber;
 		private static int GuaranteeEngineTickDelay = 0;
 
 		public void SetTimer(ref TimerHandle handle, in TimerDelegate @delegate, float rate, bool loop, float firstDelay = -1)
@@ -187,28 +185,25 @@ namespace GameplayAbilities
 			return InternalSetTimerForNextTick(new TimerUnifiedDelegate(@delegate));
 		}
 
-        protected void OnEnable()
-        {
-            if (Instance == null)
-            {
-                Instance = this;
-				if (dontDestroyOnLoad)
-                {
-                    DontDestroyOnLoad(gameObject);
-                }
-            }
-            else if (Instance != this)
-            {
-                Destroy(gameObject);
-            }
-        }
-
-        protected void Update()
+		protected void OnEnable()
 		{
-			if (autoTick)
+			if (Instance == null)
 			{
-				Tick(Time.deltaTime);
+				Instance = this;
+				if (dontDestroyOnLoad)
+				{
+					DontDestroyOnLoad(gameObject);
+				}
 			}
+			else if (Instance != this)
+			{
+				Destroy(gameObject);
+			}
+		}
+
+		protected void Update()
+		{
+			Tick(Time.deltaTime);
 		}
 
 		public void ClearTimer(TimerHandle handle)
@@ -424,19 +419,6 @@ namespace GameplayAbilities
 			return LastTickedFrame == UnityEngine.Time.frameCount;
 		}
 
-		public TimerHandle GenerateHandle(int index)
-		{
-			ulong newSerialNumber = ++LastAssignedSerialNumber;
-			if (newSerialNumber == TimerHandle.MaxSerialNumber)
-			{
-				newSerialNumber = 1;
-			}
-
-			TimerHandle result = new();
-			result.SetIndexAndSerialNumber(index, newSerialNumber);
-			return result;
-		}
-
 		public TimerData GetTimer(in TimerHandle handle)
 		{
 			int index = handle.GetIndex();
@@ -501,7 +483,7 @@ namespace GameplayAbilities
 				float firstDelay = timerParameters.FirstDelay >= 0 ? timerParameters.FirstDelay : rate;
 
 				TimerHandle newTimerHandle;
-				if (HasBeenTickedThisFrame() || !autoTick)
+				if (HasBeenTickedThisFrame())
 				{
 					newTimerData.ExpireTime = InternalTime + firstDelay;
 					newTimerData.Status = TimerStatus.Active;
@@ -658,7 +640,7 @@ namespace GameplayAbilities
 
 			int newIndex = Timers.Add(timerData);
 
-			TimerHandle result = GenerateHandle(newIndex);
+			TimerHandle result = TimerHandleGenerator.GenerateHandle(newIndex);
 			Timers[newIndex].Handle = result;
 
 			if (timerIndicesByObjectKey != null)

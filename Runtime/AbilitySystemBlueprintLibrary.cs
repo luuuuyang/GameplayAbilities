@@ -46,7 +46,7 @@ namespace GameplayAbilities
             return AbilitySystemGlobals.GetAbilitySystemComponentFromActor(actor);
         }
 
-        public static void SendGameplayEventToActor(GameObject actor, GameplayTag eventTag, in GameplayEventData payload)
+        public static void SendGameplayEventToActor(GameObject actor, GameplayTag eventTag, GameplayEventData payload)
         {
             if (actor != null)
             {

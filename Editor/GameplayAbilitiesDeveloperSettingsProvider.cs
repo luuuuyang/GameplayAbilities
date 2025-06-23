@@ -23,6 +23,8 @@ namespace GameplayAbilities.Editor
             EditorGUILayout.PropertyField(SerializedObject.FindProperty("AllowGameplayModEvaluationChannels"));
             EditorGUILayout.PropertyField(SerializedObject.FindProperty("DefaultGameplayModEvaluationChannel"));
             EditorGUILayout.PropertyField(SerializedObject.FindProperty("GameplayModEvaluationChannelAliases"));
+            EditorGUILayout.PropertyField(SerializedObject.FindProperty("UseTurnBasedTimerManager"));
+            SerializedObject.ApplyModifiedPropertiesWithoutUndo();
         }
 
         [SettingsProvider]

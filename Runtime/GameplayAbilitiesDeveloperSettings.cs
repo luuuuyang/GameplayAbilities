@@ -22,6 +22,8 @@ namespace GameplayAbilities
         public GameplayModEvaluationChannel DefaultGameplayModEvaluationChannel = GameplayModEvaluationChannel.Channel0;
         public string[] GameplayModEvaluationChannelAliases = new string[10];
 
+        public bool UseTurnBasedTimerManager;
+
         public static GameplayAbilitiesDeveloperSettings GetOrCreateSettings()
         {
             // MonoScript script = MonoScript.FromScriptableObject(CreateInstance<GameplayAbilitiesDeveloperSettings>());
