@@ -3102,6 +3102,10 @@ namespace GameplayAbilities
 				}
 				return GameplayEffectTimingType.RealTime;
 			}
+			set
+			{
+				timingType = value;
+			}
 		}
 
 		[FoldoutGroup("GameplayEffect")]
