@@ -215,6 +215,13 @@ namespace GameplayAbilities
                 int topIndex = topHandle.GetIndex();
                 TurnBasedTimerData top = Timers[topIndex];
 
+                if (top.Status == TimerStatus.ActivePendingRemoval)
+				{
+					topHandle = ActiveTimerHeap.Dequeue();
+					RemoveTimer(topHandle);
+					continue;
+				}
+
                 if (InternalTime >= top.ExpireTime)
                 {
                     CurrentlyExecutingTimer = ActiveTimerHeap.Dequeue();
@@ -331,8 +338,10 @@ namespace GameplayAbilities
             switch (data.Status)
             {
                 case TimerStatus.Active:
-                    RemoveTimer(handle);
+                    data.Status = TimerStatus.ActivePendingRemoval;
                     break;
+                case TimerStatus.ActivePendingRemoval:
+					break;
                 case TimerStatus.Paused:
                     {
                         bool removed = PausedTimerSet.Remove(handle);
