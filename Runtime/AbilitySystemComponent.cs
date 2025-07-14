@@ -14,7 +14,7 @@ namespace GameplayAbilities
 	public delegate bool GameplayEffectApplicationQuery(in ActiveGameplayEffectsContainer activeGEContainer, in GameplayEffectSpec geSpecToConsider);
 
 	[DefaultExecutionOrder(-1)]
-	public class AbilitySystemComponent : MonoBehaviour, IGameplayTagAssetInterface
+	public class AbilitySystemComponent : GameplayTasksComponent, IGameplayTagAssetInterface
 	{
 		public delegate void OnGameplayEffectAppliedDelegate(AbilitySystemComponent instigator, in GameplayEffectSpec spec, ActiveGameplayEffectHandle handle);
 		public GameplayTagCountContainer GameplayTagCountContainer = new();
@@ -29,8 +29,8 @@ namespace GameplayAbilities
 		public List<GameplayEffectApplicationQuery> GameplayEffectApplicationQueries = new();
 
 		public ImmunityBlockGE OnImmunityBlockGameplayEffectDelegate;
-		public OnGameplayEffectAppliedDelegate OnGameplayEffectAppliedToSelfDelegate;
-		public OnGameplayEffectAppliedDelegate OnGameplayEffectAppliedToTargetDelegate;
+		public OnGameplayEffectAppliedDelegate OnGameplayEffectAppliedDelegateToSelf;
+		public OnGameplayEffectAppliedDelegate OnGameplayEffectAppliedDelegateToTarget;
 		public OnGameplayEffectAppliedDelegate OnActiveGameplayEffectAddedDelegateToSelf;
 		public OnGameplayEffectAppliedDelegate OnPeriodicGameplayEffectExecutedDelegateOnSelf;
 		public OnGameplayEffectAppliedDelegate OnPeriodicGameplayEffectExecutedDelegateOnTarget;
@@ -41,11 +41,11 @@ namespace GameplayAbilities
 		public GenericAbilityDelegate AbilityCommittedCallbacks;
 		public AbilityFailedDelegate AbilityFailedCallbacks;
 
-		private Dictionary<GameplayTag, GameplayEventMulticastDelegate> GenericGameplayEventCallbacks = new();
-		private List<KeyValuePair<GameplayTagContainer, GameplayEventTagMulticastDelegate>> GameplayEventTagContainerDelegates = new();
+		public Dictionary<GameplayTag, GameplayEventMulticastDelegate> GenericGameplayEventCallbacks = new();
+		public List<KeyValuePair<GameplayTagContainer, GameplayEventTagMulticastDelegate>> GameplayEventTagContainerDelegates = new();
 
-		private float OutgoingDuration;
-		private float IncomingDuration;
+		public float OutgoingDuration;
+		public float IncomingDuration;
 
 		public static readonly Lazy<FieldInfo> OutgoingDurationProperty = new(
 		() => typeof(AbilitySystemComponent).GetField(
@@ -628,9 +628,9 @@ namespace GameplayAbilities
 			return ActiveGameplayEffects.CanApplyAttributeModifiers(gameplayEffect, level, effectContext);
 		}
 
-		public void OnMagnitudeDependencyChange(ActiveGameplayEffectHandle handle, Aggregator changed_aggregator)
+		public void OnMagnitudeDependencyChange(ActiveGameplayEffectHandle handle, in Aggregator changedAggregator)
 		{
-			ActiveGameplayEffects.OnMagnitudeDependencyChange(handle, changed_aggregator);
+			ActiveGameplayEffects.OnMagnitudeDependencyChange(handle, changedAggregator);
 		}
 
 		public void OnAttributeAggregatorDirty(Aggregator aggregator, GameplayAttribute attribute, bool fromRecursiveCall = false)
@@ -645,12 +645,12 @@ namespace GameplayAbilities
 
 		public void OnGameplayEffectAppliedToSelf(AbilitySystemComponent source, in GameplayEffectSpec specApplied, ActiveGameplayEffectHandle activeHandle)
 		{
-			OnGameplayEffectAppliedToSelfDelegate?.Invoke(source, specApplied, activeHandle);
+			OnGameplayEffectAppliedDelegateToSelf?.Invoke(source, specApplied, activeHandle);
 		}
 
 		public void OnGameplayEffectAppliedToTarget(AbilitySystemComponent target, in GameplayEffectSpec specApplied, ActiveGameplayEffectHandle activeHandle)
 		{
-			OnGameplayEffectAppliedToTargetDelegate?.Invoke(target, specApplied, activeHandle);
+			OnGameplayEffectAppliedDelegateToTarget?.Invoke(target, specApplied, activeHandle);
 		}
 
 		public void OnActiveGameplayEffectAddedToSelf(AbilitySystemComponent self, in GameplayEffectSpec specExecuted, ActiveGameplayEffectHandle activeHandle)
@@ -1689,6 +1689,44 @@ namespace GameplayAbilities
 			}
 
 			return triggerCount;
+		}
+
+		public void AddGameplayEventTagContainerDelegate(in GameplayTagContainer tagFilter, in GameplayEventTagMulticastDelegate @delegate)
+		{
+			KeyValuePair<GameplayTagContainer, GameplayEventTagMulticastDelegate> foundPair = new();
+
+			foreach (KeyValuePair<GameplayTagContainer, GameplayEventTagMulticastDelegate> searchPair in GameplayEventTagContainerDelegates)
+			{
+				if (searchPair.Key == searchPair.Key)
+				{
+					foundPair = searchPair;
+					break;
+				}
+			}
+
+			if (foundPair.Key == null)
+			{
+				foundPair = new KeyValuePair<GameplayTagContainer, GameplayEventTagMulticastDelegate>(tagFilter, @delegate);
+				GameplayEventTagContainerDelegates.Add(foundPair);
+			}
+		}
+
+		public void RemoveGameplayEventTagContainerDelegate(in GameplayTagContainer tagFilter, in GameplayEventTagMulticastDelegate @delegate)
+		{
+			for (int index = 0; index < GameplayEventTagContainerDelegates.Count; index++)
+			{
+				KeyValuePair<GameplayTagContainer, GameplayEventTagMulticastDelegate> searchPair = GameplayEventTagContainerDelegates[index];
+				if (searchPair.Key == tagFilter)
+				{
+					GameplayEventTagMulticastDelegate multicastDelegate = searchPair.Value;
+					multicastDelegate -= @delegate;
+					if (multicastDelegate == null)
+					{
+						GameplayEventTagContainerDelegates.RemoveAt(index);
+					}
+					break;
+				}
+			}
 		}
 
 		public bool TriggerAbilityFromGameplayEvent(GameplayAbilitySpecHandle handle, GameplayAbilityActorInfo actorInfo, GameplayTag eventTag, in GameplayEventData payload, AbilitySystemComponent component)

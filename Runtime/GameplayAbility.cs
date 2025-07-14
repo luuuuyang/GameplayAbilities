@@ -17,7 +17,7 @@ namespace GameplayAbilities
 	}
 
 	[CreateAssetMenu(fileName = "GameplayAbility", menuName = "GameplayAbilities/GameplayAbility")]
-	public class GameplayAbility : ScriptableObject
+	public class GameplayAbility : ScriptableObject, IGameplayTaskOwnerInterface
 	{
 		[FoldoutGroup("Tags")]
 		[LabelText("AssetTags (Default AbilityTags)")]
@@ -58,6 +58,8 @@ namespace GameplayAbilities
 		[FoldoutGroup("Tags")]
 		[SerializeField]
 		protected GameplayTagContainer TargetBlockedTags = new();
+
+		protected List<GameplayTask> ActiveTasks = new();
 
 		public GameplayTagContainer AssetTags => AbilityTags;
 
@@ -823,6 +825,11 @@ namespace GameplayAbilities
 			return this != null;
 		}
 
+		public bool IsTriggered()
+		{
+			return AbilityTriggers.Count > 0;
+		}
+
 		public AbilitySystemComponent GetAbilitySystemComponentFromActorInfo()
 		{
 			Debug.Assert(CurrentActorInfo != null);
@@ -853,6 +860,64 @@ namespace GameplayAbilities
 			Debug.Assert(abilitySystemComponent != null);
 
 			return abilitySystemComponent;
+		}
+
+		public virtual GameplayTasksComponent GetGameplayTasksComponent(in GameplayTask task)
+		{
+			if (CurrentActorInfo != null)
+			{
+				if (CurrentActorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent))
+				{
+					return abilitySystemComponent;
+				}
+			}
+
+			return null;
+		}
+
+		public virtual GameObject GetGameplayTaskOwner(in GameplayTask task)
+		{
+			if (CurrentActorInfo != null)
+			{
+				CurrentActorInfo.OwnerActor.TryGetTarget(out GameObject ownerActor);
+				return ownerActor;
+			}
+
+			return null;
+		}
+
+		public virtual GameObject GetGameplayTaskAvatar(in GameplayTask task)
+		{
+			if (CurrentActorInfo != null)
+			{
+				CurrentActorInfo.AvatarActor.TryGetTarget(out GameObject avatarActor);
+				return avatarActor;
+			}
+
+			return null;
+		}
+
+		public virtual void OnGameplayTaskInitialized(GameplayTask task)
+		{
+            GameplayAbilityActorInfo actorInfo = CurrentActorInfo;
+
+            if (task is AbilityTask abilityTask && actorInfo != null)
+			{
+				actorInfo.AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent);
+				abilityTask.SetAbilitySystemComponent(abilitySystemComponent);
+
+				abilityTask.Ability = this;
+			}
+		}
+
+		public virtual void OnGameplayTaskActivated(GameplayTask task)
+		{
+			ActiveTasks.Add(task);
+		}
+
+		public virtual void OnGameplayTaskDeactivated(GameplayTask task)
+		{
+			ActiveTasks.Remove(task);
 		}
 	}
 }
