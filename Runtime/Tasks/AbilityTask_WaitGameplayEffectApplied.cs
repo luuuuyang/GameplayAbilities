@@ -16,6 +16,7 @@ namespace GameplayAbilities
         protected bool RegisteredCallback;
         protected bool UseExternalOwner;
         protected AbilitySystemComponent ExternalOwner;
+        protected bool Locked;
 
         protected AbilitySystemComponent ASC
         {
@@ -92,7 +93,9 @@ namespace GameplayAbilities
 
             GameplayEffectSpecHandle specHandle = new(new GameplayEffectSpec(specApplied));
 
+            Locked = true;
             BroadcastDelegate(avatarActor, specHandle, activeHandle);
+
 
             if (TriggerOnce)
             {
@@ -112,7 +115,7 @@ namespace GameplayAbilities
 
         protected virtual void RemoveDelegate()
         {
-            
+
         }
 
         public void SetExternalActor(GameObject actor)

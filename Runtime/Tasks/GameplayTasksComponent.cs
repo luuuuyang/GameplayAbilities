@@ -257,7 +257,6 @@ namespace GameplayAbilities
         {
             if (CurrentlyClaimedResources != newClaimedSet)
             {
-                
                 CurrentlyClaimedResources = newClaimedSet;
                 OnClaimedResourcesChanged(CurrentlyClaimedResources);
             }

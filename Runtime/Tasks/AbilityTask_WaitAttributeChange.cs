@@ -28,24 +28,31 @@ namespace GameplayAbilities
         public bool TriggerOnce;
 
         protected AbilitySystemComponent ExternalOwner;
-        
+
         protected override void Activate()
         {
-            
+
         }
 
         public void OnAttributeChanged(in OnAttributeChangeData callbackData)
         {
             float newValue = callbackData.NewValue;
             GameplayEffectModCallbackData data = callbackData.GEModData;
-            
+
             if (data == null)
             {
-
+                if (WithTag.IsValid())
+                {
+                    return;
+                }
             }
             else
             {
-
+                if (WithTag.IsValid() && !data.EffectSpec.CapturedSourceTags.AggregatedTags.HasTag(WithTag) ||
+                    WithoutTag.IsValid() && data.EffectSpec.CapturedSourceTags.AggregatedTags.HasTag(WithoutTag))
+                {
+                    return;
+                }
             }
 
             bool passedComparison = true;
@@ -94,7 +101,7 @@ namespace GameplayAbilities
             newTask.ComparisonType = WaitAttributeChangeComparison.None;
             newTask.TriggerOnce = triggerOnce;
             newTask.ExternalOwner = optionalExternalOwner ? AbilitySystemGlobals.GetAbilitySystemComponentFromActor(optionalExternalOwner) : null;
-            
+
             return newTask;
         }
 

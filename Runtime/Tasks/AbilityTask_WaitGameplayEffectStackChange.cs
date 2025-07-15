@@ -7,7 +7,7 @@ namespace GameplayAbilities
         public WaitGameplayEffectStackChangeDelegate OnChange;
         public WaitGameplayEffectStackChangeDelegate InvalidHandle;
         public ActiveGameplayEffectHandle Handle;
-        
+
         protected bool Registered;
 
         protected override void Activate()

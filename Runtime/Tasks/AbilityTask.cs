@@ -14,7 +14,7 @@ namespace GameplayAbilities
     {
         public GameplayAbility Ability;
         public WeakReference<AbilitySystemComponent> AbilitySystemComponent;
-        
+
         public bool ShouldBroadcastAbilityTaskDelegates
         {
             get
@@ -41,7 +41,7 @@ namespace GameplayAbilities
         {
             T newTask = new();
             newTask.InitTask(owningAbility, (owningAbility as IGameplayTaskOwnerInterface).GameplayTaskDefaultPriority);
-            
+
             newTask.InstanceName = instanceName;
 
             return newTask;

@@ -13,7 +13,7 @@ namespace GameplayAbilities
         public bool TriggerOnce;
         public GameplayTagRequirements TagRequirements;
         public GameplayTagQuery Query;
-        
+
         protected override void Activate()
         {
             if (AbilitySystemComponent.TryGetTarget(out AbilitySystemComponent abilitySystemComponent))

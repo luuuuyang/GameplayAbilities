@@ -23,7 +23,7 @@ namespace GameplayAbilities
                 {
                     return target;
                 }
-                
+
                 return null;
             }
         }
