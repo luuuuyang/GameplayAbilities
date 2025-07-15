@@ -492,6 +492,14 @@ namespace GameplayAbilities
 			return GameplayTagCountContainer.HasAnyMatchingGameplayTags(tagContainer);
 		}
 
+		public void UpdateTagMap(in GameplayTag baseTag, int countDelta)
+		{
+			if (GameplayTagCountContainer.UpdateTagCount(baseTag, countDelta))
+			{
+				OnTagUpdated(baseTag, countDelta > 0);
+			}
+		}
+
 		public void UpdateTagMap(in GameplayTagContainer container, int countDelta)
 		{
 			if (!container.IsEmpty())
@@ -1829,6 +1837,62 @@ namespace GameplayAbilities
 			}
 
 			return count;
+		}
+
+		public void ExecuteGameplayCue(in GameplayTag gameplayCueTag, GameplayCueEventType eventType, in GameplayCueParameters parameters)
+		{
+			GameplayCueInterfacePrivate.PerClassGameplayTagToFunctionMap.TryGetValue(this, out var gameplayTagFunctionList);
+			gameplayTagFunctionList.TryGetValue(gameplayCueTag, out var functionList);
+		}
+
+		public void AddGameplayCue(in GameplayTag gameplayCueTag, in GameplayCueParameters parameters)
+		{
+			GameplayCueInterfacePrivate.PerClassGameplayTagToFunctionMap.TryGetValue(this, out var gameplayTagFunctionList);
+			gameplayTagFunctionList.TryGetValue(gameplayCueTag, out var functionList);
+		}
+
+		public void RemoveGameplayCue(in GameplayTag gameplayCueTag)
+		{
+			GameplayCueInterfacePrivate.PerClassGameplayTagToFunctionMap.TryGetValue(this, out var gameplayTagFunctionList);
+			gameplayTagFunctionList.TryGetValue(gameplayCueTag, out var functionList);
+		}
+
+		public void RemoveAllGameplayCues()
+		{
+			GameplayCueInterfacePrivate.PerClassGameplayTagToFunctionMap.TryGetValue(this, out var gameplayTagFunctionList);
+			gameplayTagFunctionList.Clear();
+		}
+
+		public void InvokeGameplayCueEvent(in GameplayTag gameplayCueTag, GameplayCueEventType eventType, in GameplayCueParameters parameters)
+		{
+			GameplayCueInterfacePrivate.PerClassGameplayTagToFunctionMap.TryGetValue(this, out var gameplayTagFunctionList);
+			gameplayTagFunctionList.TryGetValue(gameplayCueTag, out var functionList);
+		}
+
+		public bool IsGameplayCueActive(in GameplayTag gameplayCueTag)
+		{
+			return HasMatchingGameplayTag(gameplayCueTag);
+		}
+
+		public virtual void InitDefaultGameplayCueParameters(GameplayCueParameters parameters)
+		{
+			parameters.Instigator = new WeakReference<GameObject>(OwnerActor);
+			parameters.EffectCauser = new WeakReference<GameObject>(AvatarActor);
+		}
+
+		public virtual bool IsReadyForGameplayCues()
+		{
+			GameObject actorAvatar = null;
+			if (AbilityActorInfo != null)
+			{
+				AbilityActorInfo.AvatarActor.TryGetTarget(out actorAvatar);
+			}
+			return actorAvatar != null;
+		}
+
+		public virtual void HandleDeferredGameplayCues(in ActiveGameplayEffectsContainer gameplayEffectsContainer)
+		{
+
 		}
 
 		#region Debug

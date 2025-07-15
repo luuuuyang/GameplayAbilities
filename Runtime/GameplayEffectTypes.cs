@@ -367,6 +367,24 @@ namespace GameplayAbilities
         public ActiveGameplayEffect ActiveEffect;
     }
 
+    public class GameplayCueParameters
+    {
+        public GameplayTag MatchedTagName;
+        public GameplayTag OriginalTag;
+        public GameplayTagContainer AggregatedSourceTags;
+        public GameplayTagContainer AggregatedTargetTags;
+        public WeakReference<GameObject> Instigator;
+        public WeakReference<GameObject> EffectCauser;
+    }
+
+    public enum GameplayCueEventType
+    {
+        OnActive,
+        WhileActive,
+        Executed,
+        Removed,
+    }
+
     public class OnGivenActiveGameplayEffectRemoved : UnityEvent<ActiveGameplayEffect> { }
     public class OnActiveGameplayEffectRemoved_Info : UnityEvent<GameplayEffectRemovalInfo> { }
     public class OnActiveGameplayEffectStackChange : UnityEvent<ActiveGameplayEffectHandle, int, int> { }
