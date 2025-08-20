@@ -265,9 +265,9 @@ namespace GameplayAbilities
         protected void UpdateShouldTick()
         {
             bool shouldTick = ShouldTick;
-            if (gameObject.activeSelf != shouldTick)
+            if (enabled != shouldTick)
             {
-                gameObject.SetActive(shouldTick);
+                enabled = shouldTick;
             }
         }
 
@@ -280,7 +280,6 @@ namespace GameplayAbilities
                 ProcessTaskEvents();
             }
         }
-
 
         protected virtual void Update()
         {
